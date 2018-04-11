@@ -102,6 +102,7 @@ import org.graylog.plugins.pipelineprocessor.functions.strings.GrokMatch;
 import org.graylog.plugins.pipelineprocessor.functions.strings.KeyValue;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Lowercase;
 import org.graylog.plugins.pipelineprocessor.functions.strings.RegexMatch;
+import org.graylog.plugins.pipelineprocessor.functions.strings.Replace;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Split;
 import org.graylog.plugins.pipelineprocessor.functions.strings.StartsWith;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Substring;
@@ -223,6 +224,7 @@ public class FunctionsSnippetsTest extends BaseParserTest {
         functions.put(KeyValue.NAME, new KeyValue());
         functions.put(Split.NAME, new Split());
         functions.put(StartsWith.NAME, new StartsWith());
+        functions.put(Replace.NAME, new Replace());
 
         final ObjectMapper objectMapper = new ObjectMapperProvider().get();
         functions.put(JsonParse.NAME, new JsonParse(objectMapper));
