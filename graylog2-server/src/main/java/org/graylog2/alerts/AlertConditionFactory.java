@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.alerts;
 
@@ -48,8 +48,10 @@ public class AlertConditionFactory {
                                                Map<String, Object> parameters,
                                                String title) throws ConfigurationException {
 
+        final String conditionTitle = isNullOrEmpty(title) ? "" : "'" + title + "' ";
         final AlertCondition.Factory factory = this.alertConditionMap.get(type);
-        checkArgument(factory != null, "Unknown alert condition type: " + type);
+        checkArgument(factory != null, "Unknown alert condition type <%s> for alert condition %s<%s> on stream \"%s\" <%s>",
+                type, conditionTitle, id, stream.getTitle(), stream.getId());
 
         /*
          * Ensure the given parameters fulfill the requested configuration preconditions.
@@ -62,8 +64,7 @@ public class AlertConditionFactory {
             final Configuration configuration = new Configuration(parameters);
             requestedConfiguration.check(configuration);
         } catch (ConfigurationException e) {
-            final String conditionTitle = isNullOrEmpty(title) ? "" : "'" + title + "' ";
-            LOG.error("Could not load alert condition " + conditionTitle + "<" + id + ">, invalid configuration detected.");
+            LOG.error("Could not load alert condition {}<{}> on stream \"{}\" <{}>, invalid configuration detected.", conditionTitle, id, stream.getTitle(), stream.getId());
             throw e;
         }
 

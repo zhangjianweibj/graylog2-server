@@ -1,18 +1,33 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, ControlLabel, FormGroup, HelpBlock, Panel, Row } from 'react-bootstrap';
 import naturalSort from 'javascript-natural-sort';
-import { Link } from 'react-router';
 
+import { Link } from 'components/graylog/router';
+import { Col, ControlLabel, FormGroup, HelpBlock, Panel, Row } from 'components/graylog';
 import { Select } from 'components/common';
 import RawMessageLoader from 'components/messageloaders/RawMessageLoader';
+import Routes from 'routing/Routes';
+import CombinedProvider from 'injection/CombinedProvider';
+
 import SimulationResults from './SimulationResults';
 
-import Routes from 'routing/Routes';
-
-import SimulatorActions from 'actions/simulator/SimulatorActions';
-// eslint-disable-next-line no-unused-vars
-import SimulatorStore from 'stores/simulator/SimulatorStore';
+const { SimulatorActions } = CombinedProvider.get('Simulator');
 
 const DEFAULT_STREAM_ID = '000000000000000000000001';
 
@@ -24,7 +39,7 @@ class ProcessorSimulator extends React.Component {
   constructor(props) {
     super(props);
     // The default stream could not be present in a system. In that case we fallback to the first available stream.
-    this.defaultStream = props.streams.find(s => s.id === DEFAULT_STREAM_ID) || props.streams[0];
+    this.defaultStream = props.streams.find((s) => s.id === DEFAULT_STREAM_ID) || props.streams[0];
 
     this.state = {
       message: undefined,
@@ -41,12 +56,12 @@ class ProcessorSimulator extends React.Component {
     SimulatorActions.simulate
       .triggerPromise(this.state.stream, message.fields, options.inputId)
       .then(
-        response => {
+        (response) => {
           this.setState({ simulation: response, loading: false });
         },
-        error => {
+        (error) => {
           this.setState({ loading: false, error: error });
-        }
+        },
       );
   };
 
@@ -56,14 +71,15 @@ class ProcessorSimulator extends React.Component {
     }
 
     return streams
-      .map(s => {
-        return { value: s.id, label: s.title };
+      .map((stream) => {
+        return { value: stream.id, label: stream.title };
       })
       .sort((s1, s2) => naturalSort(s1.label, s2.label));
   };
 
   _onStreamSelect = (selectedStream) => {
-    const stream = this.props.streams.find(s => s.id.toLowerCase() === selectedStream.toLowerCase());
+    const stream = this.props.streams.find((s) => s.id.toLowerCase() === selectedStream.toLowerCase());
+
     this.setState({ stream: stream });
   };
 
@@ -98,7 +114,8 @@ class ProcessorSimulator extends React.Component {
             <p>
               Build an example message that will be used in the simulation.{' '}
               <strong>No real messages stored in Graylog will be changed. All actions are purely simulated on the
-                temporary input you provide below.</strong>
+                temporary input you provide below.
+              </strong>
             </p>
             <Row className="row-sm">
               <Col md={7}>

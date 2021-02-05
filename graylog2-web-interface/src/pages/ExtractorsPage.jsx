@@ -1,25 +1,39 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
+import createReactClass from 'create-react-class';
 import PropTypes from 'prop-types';
 import React from 'react';
-import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { DropdownButton, MenuItem } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
 
+import { LinkContainer } from 'components/graylog/router';
+import { DocumentTitle, Spinner } from 'components/common';
 import PageHeader from 'components/common/PageHeader';
 import ExtractorsList from 'components/extractors/ExtractorsList';
-import { DocumentTitle, Spinner } from 'components/common';
 import DocumentationLink from 'components/support/DocumentationLink';
-
+import ActionsProvider from 'injection/ActionsProvider';
+import StoreProvider from 'injection/StoreProvider';
+import { DropdownButton, MenuItem } from 'components/graylog';
 import Routes from 'routing/Routes';
 import DocsHelper from 'util/DocsHelper';
+import withParams from 'routing/withParams';
 
-import ActionsProvider from 'injection/ActionsProvider';
 const NodesActions = ActionsProvider.getActions('Nodes');
 const InputsActions = ActionsProvider.getActions('Inputs');
-
-import StoreProvider from 'injection/StoreProvider';
 const NodesStore = StoreProvider.getStore('Nodes');
-const InputsStore = StoreProvider.getStore('Inputs');
 
 const ExtractorsPage = createReactClass({
   displayName: 'ExtractorsPage',
@@ -28,41 +42,36 @@ const ExtractorsPage = createReactClass({
     params: PropTypes.object.isRequired,
   },
 
-  mixins: [Reflux.connect(InputsStore), Reflux.listenTo(NodesStore, 'onNodesChange')],
+  mixins: [Reflux.listenTo(NodesStore, 'onNodesChange')],
 
   getInitialState() {
     return {
-      input: undefined,
       node: undefined,
     };
   },
 
   componentDidMount() {
-    InputsActions.get.triggerPromise(this.props.params.inputId);
-    NodesActions.list.triggerPromise();
+    const { params } = this.props;
+
+    InputsActions.get(params.inputId).then((input) => this.setState({ input }));
+    NodesActions.list();
   },
 
   onNodesChange(nodes) {
-    let inputNode;
-    if (this.props.params.nodeId) {
-      inputNode = nodes.nodes[this.props.params.nodeId];
-    } else {
-      const nodeIds = Object.keys(nodes.nodes);
-      for (let i = 0; i < nodeIds.length && !inputNode; i++) {
-        const tempNode = nodes.nodes[nodeIds[i]];
-        if (tempNode.is_master) {
-          inputNode = tempNode;
-        }
-      }
-    }
+    const { params } = this.props;
+    const newNode = params.nodeId ? nodes.nodes[params.nodeId] : Object.values(nodes.nodes).filter((node) => node.is_master);
 
-    if (!this.state.node || this.state.node.node_id !== inputNode.node_id) {
-      this.setState({ node: inputNode });
+    const { node } = this.state;
+
+    if (!node || node.node_id !== newNode.node_id) {
+      this.setState({ node: newNode });
     }
   },
 
   _isLoading() {
-    return !(this.state.input && this.state.node);
+    const { node, input } = this.state;
+
+    return !(input && node);
   },
 
   render() {
@@ -70,10 +79,12 @@ const ExtractorsPage = createReactClass({
       return <Spinner />;
     }
 
+    const { node, input } = this.state;
+
     return (
-      <DocumentTitle title={`Extractors of ${this.state.input.title}`}>
+      <DocumentTitle title={`Extractors of ${input.title}`}>
         <div>
-          <PageHeader title={<span>Extractors of <em>{this.state.input.title}</em></span>}>
+          <PageHeader title={<span>Extractors of <em>{input.title}</em></span>}>
             <span>
               Extractors are applied on every message that is received by this input. Use them to extract and transform{' '}
               any text data into fields that allow you easy filtering and analysis later on.{' '}
@@ -87,19 +98,19 @@ const ExtractorsPage = createReactClass({
             </span>
 
             <DropdownButton bsStyle="info" bsSize="large" id="extractor-actions-dropdown" title="Actions" pullRight>
-              <LinkContainer to={Routes.import_extractors(this.state.node.node_id, this.state.input.id)}>
+              <LinkContainer to={Routes.import_extractors(node.node_id, input.id)}>
                 <MenuItem>Import extractors</MenuItem>
               </LinkContainer>
-              <LinkContainer to={Routes.export_extractors(this.state.node.node_id, this.state.input.id)}>
+              <LinkContainer to={Routes.export_extractors(node.node_id, input.id)}>
                 <MenuItem>Export extractors</MenuItem>
               </LinkContainer>
             </DropdownButton>
           </PageHeader>
-          <ExtractorsList input={this.state.input} node={this.state.node} />
+          <ExtractorsList input={input} node={node} />
         </div>
       </DocumentTitle>
     );
   },
 });
 
-export default ExtractorsPage;
+export default withParams(ExtractorsPage);

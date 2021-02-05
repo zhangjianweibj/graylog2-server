@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin.configuration;
 
@@ -22,6 +22,7 @@ import com.google.common.collect.Maps;
 import org.graylog2.plugin.configuration.fields.BooleanField;
 import org.graylog2.plugin.configuration.fields.ConfigurationField;
 import org.graylog2.plugin.configuration.fields.DropdownField;
+import org.graylog2.plugin.configuration.fields.ListField;
 import org.graylog2.plugin.configuration.fields.NumberField;
 import org.graylog2.plugin.configuration.fields.TextField;
 import org.slf4j.Logger;
@@ -37,7 +38,8 @@ public class ConfigurationRequest {
 
     private final Map<String, ConfigurationField> fields = Maps.newLinkedHashMap();
 
-    public ConfigurationRequest() {}
+    public ConfigurationRequest() {
+    }
 
     public void putAll(Map<String, ConfigurationField> fields) {
         this.fields.putAll(fields);
@@ -88,6 +90,7 @@ public class ConfigurationRequest {
             config.put("is_optional", f.isOptional().equals(ConfigurationField.Optional.OPTIONAL));
             config.put("attributes", f.getAttributes());
             config.put("additional_info", f.getAdditionalInformation());
+            config.put("position", f.getPosition());
 
             configs.put(f.getName(), config);
         }
@@ -99,30 +102,38 @@ public class ConfigurationRequest {
         for (ConfigurationField field : fields.values()) {
             if (field.isOptional().equals(ConfigurationField.Optional.NOT_OPTIONAL)) {
                 final String type = field.getFieldType();
-                log.debug("Checking for non-optional field {} of type {} in configuration", field.getName(), type);
+                final String fieldName = field.getName();
+                log.debug("Checking for mandatory field \"{}\" of type {} in configuration", fieldName, type);
                 switch (type) {
                     case BooleanField.FIELD_TYPE:
-                        if (!configuration.booleanIsSet(field.getName())) {
-                            throw new ConfigurationException("Mandatory configuration field " + field.getName() + " is missing or has the wrong data type");
+                        if (!configuration.booleanIsSet(fieldName)) {
+                            throw new ConfigurationException("Mandatory configuration field \"" + fieldName + "\" is missing or has the wrong data type");
                         }
                         break;
                     case NumberField.FIELD_TYPE:
-                        if (!configuration.intIsSet(field.getName())) {
-                            throw new ConfigurationException("Mandatory configuration field " + field.getName() + " is missing or has the wrong data type");
+                        if (!configuration.intIsSet(fieldName)) {
+                            throw new ConfigurationException("Mandatory configuration field \"" + fieldName + "\" is missing or has the wrong data type");
+                        }
+                        break;
+                    case ListField.FIELD_TYPE:
+                        if (!configuration.listIsSet(fieldName)) {
+                            throw new ConfigurationException("Mandatory configuration field \"" + fieldName + "\" is missing or has the wrong data type");
                         }
                         break;
                     case TextField.FIELD_TYPE:
                     case DropdownField.FIELD_TYPE:
-                        if (!configuration.stringIsSet(field.getName())) {
-                                throw new ConfigurationException("Mandatory configuration field " + field.getName() + " is missing or has the wrong data type");
+                        if (!configuration.stringIsSet(fieldName)) {
+                            throw new ConfigurationException("Mandatory configuration field \"" + fieldName + "\" is missing or has the wrong data type");
                         }
                         break;
                     default:
-                        throw new IllegalStateException("Unknown field type " + type + ". This is a bug.");
+                        throw new IllegalStateException("Unknown field type " + type + " for configuration field \"" + fieldName + "\". This is a bug.");
                 }
             }
         }
     }
+
+
 
     /**
      * Creates a new {@link org.graylog2.plugin.configuration.Configuration configuration object} containing only the
@@ -148,6 +159,11 @@ public class ConfigurationRequest {
                         values.put(name, config.getInt(name));
                     }
                     break;
+                case ListField.FIELD_TYPE:
+                    if (config.listIsSet(name)) {
+                        values.put(name, config.getList(name));
+                    }
+                    break;
                 case TextField.FIELD_TYPE:
                 case DropdownField.FIELD_TYPE:
                     if (config.stringIsSet(name)) {
@@ -155,11 +171,12 @@ public class ConfigurationRequest {
                     }
                     break;
                 default:
-                    throw new IllegalStateException("Unknown field type " + type + ". This is a bug.");
+                    throw new IllegalStateException("Unknown field type " + type + " for configuration field \"" + name + "\". This is a bug.");
             }
         }
         return new Configuration(values);
     }
+
 
     public static class Templates {
 
@@ -192,7 +209,5 @@ public class ConfigurationRequest {
                     NumberField.Attribute.ONLY_POSITIVE
             );
         }
-
     }
-
 }

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.netflow.flows;
 
@@ -68,8 +68,11 @@ public class NetFlowFormatter {
 
     private static String toMessageString(NetFlowV9BaseRecord record) {
         final ImmutableMap<String, Object> fields = record.fields();
-        final long packetCount = (long) fields.get("in_pkts");
-        final long octetCount = (long) fields.get("in_bytes");
+        final long packetCount = (long) fields.getOrDefault("in_pkts", 0L);
+        long octetCount = (long) fields.getOrDefault("in_bytes", 0L);
+        if (octetCount == 0L) {
+            octetCount = (long) fields.getOrDefault("fwd_flow_delta_bytes", 0L);
+        }
         final String srcAddr = (String) fields.get("ipv4_src_addr");
         final String dstAddr = (String) fields.get("ipv4_dst_addr");
         final Integer srcPort = (Integer) fields.get("l4_src_port");

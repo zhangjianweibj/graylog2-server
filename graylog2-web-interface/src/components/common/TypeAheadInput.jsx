@@ -1,11 +1,35 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Input } from 'components/bootstrap';
-import UniversalSearch from 'logic/search/UniversalSearch';
+import escape from 'lodash/escape';
 import $ from 'jquery';
-// eslint-disable-next-line no-unused-vars
-import Typeahead from 'typeahead.js';
+import 'typeahead.js';
+import styled from 'styled-components';
+
+import UniversalSearch from 'logic/search/UniversalSearch';
+import { Input } from 'components/bootstrap';
+
+const StyledInput = styled(Input)`
+  input&.tt-hint {
+    background-color: transparent !important;
+  }
+`;
 
 /**
  * Component that renders a field input with auto-completion capabilities.
@@ -27,6 +51,8 @@ class TypeAheadInput extends React.Component {
     onKeyPress: PropTypes.func,
     /** Object key where to store auto-completion result. */
     displayKey: PropTypes.string,
+    /** String that allows overriding the input form group */
+    formGroupClassName: PropTypes.string,
     /**
      * Array of strings providing auto-completion.
      * E.g. `[ "some string", "otherstring" ]`
@@ -55,13 +81,21 @@ class TypeAheadInput extends React.Component {
 
   static defaultProps = {
     displayKey: 'suggestion',
-  };
-
-  componentDidMount() {
-    this._updateTypeahead(this.props);
+    formGroupClassName: undefined,
+    onKeyPress: () => {},
+    onTypeaheadLoaded: () => {},
+    onSuggestionSelected: () => {},
+    suggestions: [],
+    suggestionText: undefined,
   }
 
-  componentWillReceiveProps(newProps) {
+  componentDidMount() {
+    const { suggestions, displayKey, suggestionText, onTypeaheadLoaded, onSuggestionSelected } = this.props;
+
+    this._updateTypeahead({ suggestions, displayKey, suggestionText, onTypeaheadLoaded, onSuggestionSelected });
+  }
+
+  UNSAFE_componentWillReceiveProps(newProps) {
     this._destroyTypeahead();
     this._updateTypeahead(newProps);
   }
@@ -83,9 +117,10 @@ class TypeAheadInput extends React.Component {
     $(this.fieldFormGroup).off('typeahead:select typeahead:autocomplete');
   };
 
-  _updateTypeahead = (props) => {
-    this.fieldInput = this.refs.fieldInput.getInputDOMNode();
-    this.fieldFormGroup = ReactDOM.findDOMNode(this.refs.fieldInput);
+  _updateTypeahead = ({ suggestions, displayKey, suggestionText, onTypeaheadLoaded, onSuggestionSelected }) => {
+    this.fieldInput = this.fieldInputElem.getInputDOMNode();
+    // eslint-disable-next-line react/no-find-dom-node
+    this.fieldFormGroup = ReactDOM.findDOMNode(this.fieldInputElem);
 
     const $fieldInput = $(this.fieldInput);
 
@@ -96,37 +131,44 @@ class TypeAheadInput extends React.Component {
     },
     {
       name: 'dataset-name',
-      displayKey: props.displayKey,
-      source: UniversalSearch.substringMatcher(props.suggestions, props.displayKey, 6),
+      displayKey: displayKey,
+      source: UniversalSearch.substringMatcher(suggestions, displayKey, 6),
       templates: {
         suggestion: (value) => {
-          if (props.suggestionText) {
-            return `<div><strong>${props.suggestionText}</strong> ${value[props.displayKey]}</div>`;
+          // Escape all text here that may be user-generated, since this is not automatically escaped by React.
+          if (suggestionText) {
+            return `<div><strong>${escape(suggestionText)}</strong> ${escape(value[displayKey])}</div>`;
           }
-          return `<div>${value[props.displayKey]}</div>`;
+
+          return `<div>${escape(value[displayKey])}</div>`;
         },
       },
     });
 
-    if (typeof props.onTypeaheadLoaded === 'function') {
-      props.onTypeaheadLoaded();
+    if (typeof onTypeaheadLoaded === 'function') {
+      onTypeaheadLoaded();
       $fieldInput.typeahead('close');
     }
 
     $(this.fieldFormGroup).on('typeahead:select typeahead:autocomplete', (event, suggestion) => {
-      if (props.onSuggestionSelected) {
-        props.onSuggestionSelected(event, suggestion);
+      if (onSuggestionSelected) {
+        onSuggestionSelected(event, suggestion);
       }
     });
   };
 
   render() {
-    return (<Input id={this.props.id}
+    const { id, label, onKeyPress, formGroupClassName } = this.props;
+
+    return (
+      <StyledInput id={id}
                    type="text"
-                   ref="fieldInput"
+                   ref={(fieldInput) => { this.fieldInputElem = fieldInput; }}
                    wrapperClassName="typeahead-wrapper"
-                   label={this.props.label}
-                   onKeyPress={this.props.onKeyPress} />);
+                   formGroupClassName={formGroupClassName}
+                   label={label}
+                   onKeyPress={onKeyPress} />
+    );
   }
 }
 

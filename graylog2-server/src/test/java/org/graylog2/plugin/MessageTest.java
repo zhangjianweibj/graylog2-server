@@ -1,38 +1,50 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.plugin.streams.Stream;
+import org.graylog2.shared.SuppressForbidden;
+import org.graylog2.shared.bindings.providers.ObjectMapperProvider;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeUtils;
 import org.joda.time.DateTimeZone;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.chrono.ThaiBuddhistDate;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -58,6 +70,7 @@ public class MessageTest {
     @Rule
     public final MockitoRule mockitoRule = MockitoJUnit.rule();
 
+    private final ObjectMapper objectMapper = new ObjectMapperProvider().get();
     private Message message;
     private DateTime originalTimestamp;
     private MetricRegistry metricRegistry;
@@ -65,10 +78,18 @@ public class MessageTest {
 
     @Before
     public void setUp() {
+        DateTimeUtils.setCurrentMillisFixed(1524139200000L);
+
         metricRegistry = new MetricRegistry();
         originalTimestamp = Tools.nowUTC();
         message = new Message("foo", "bar", originalTimestamp);
         invalidTimestampMeter = metricRegistry.meter("test");
+
+    }
+
+    @After
+    public void tearDown() {
+        DateTimeUtils.setCurrentMillisSystem();
     }
 
     @Test
@@ -145,6 +166,7 @@ public class MessageTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testAddStringFields() throws Exception {
         final Map<String, String> map = Maps.newHashMap();
 
@@ -158,6 +180,7 @@ public class MessageTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testAddLongFields() throws Exception {
         final Map<String, Long> map = Maps.newHashMap();
 
@@ -171,6 +194,7 @@ public class MessageTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testAddDoubleFields() throws Exception {
         final Map<String, Double> map = Maps.newHashMap();
 
@@ -330,7 +354,7 @@ public class MessageTest {
         message.addField(Message.FIELD_TIMESTAMP,
                          dateTime.toDate());
 
-        final Map<String, Object> elasticSearchObject = message.toElasticSearchObject(invalidTimestampMeter);
+        final Map<String, Object> elasticSearchObject = message.toElasticSearchObject(objectMapper, invalidTimestampMeter);
         final Object esTimestampFormatted = elasticSearchObject.get(Message.FIELD_TIMESTAMP);
 
         assertEquals("Setting message timestamp as java.util.Date results in correct format for elasticsearch",
@@ -369,7 +393,7 @@ public class MessageTest {
         message.addField("field2", "that");
         message.addField(Message.FIELD_STREAMS, Collections.singletonList("test-stream"));
 
-        final Map<String, Object> object = message.toElasticSearchObject(invalidTimestampMeter);
+        final Map<String, Object> object = message.toElasticSearchObject(objectMapper, invalidTimestampMeter);
 
         assertEquals("foo", object.get("message"));
         assertEquals("bar", object.get("source"));
@@ -386,7 +410,7 @@ public class MessageTest {
     public void testToElasticSearchObjectWithInvalidKey() throws Exception {
         message.addField("field.3", "dot");
 
-        final Map<String, Object> object = message.toElasticSearchObject(invalidTimestampMeter);
+        final Map<String, Object> object = message.toElasticSearchObject(objectMapper, invalidTimestampMeter);
 
         // Elasticsearch >=2.0 does not allow "." in keys. Make sure we replace them before writing the message.
         assertEquals("#toElasticsearchObject() should replace \".\" in keys with a \"_\"",
@@ -406,7 +430,7 @@ public class MessageTest {
         message.addField("timestamp", "time!");
 
         final Meter errorMeter = metricRegistry.meter("test-meter");
-        final Map<String, Object> object = message.toElasticSearchObject(errorMeter);
+        final Map<String, Object> object = message.toElasticSearchObject(objectMapper, errorMeter);
 
         assertNotEquals("time!", object.get("timestamp"));
         assertEquals(1, errorMeter.getCount());
@@ -420,7 +444,7 @@ public class MessageTest {
 
         message.addStream(stream);
 
-        final Map<String, Object> object = message.toElasticSearchObject(invalidTimestampMeter);
+        final Map<String, Object> object = message.toElasticSearchObject(objectMapper, invalidTimestampMeter);
 
         @SuppressWarnings("unchecked")
         final Collection<String> streams = (Collection<String>) object.get("streams");
@@ -428,9 +452,15 @@ public class MessageTest {
     }
 
     @Test
-    public void messageSizes() {
-        final Meter invalidTimestampMeter = new Meter();
+    public void testToElasticsearchObjectAddsAccountedMessageSize() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
 
+        assertThat(message.toElasticSearchObject(objectMapper, invalidTimestampMeter).get("gl2_accounted_message_size"))
+                .isEqualTo(43L);
+    }
+
+    @Test
+    public void messageSizes() {
         final Message message = new Message("1234567890", "12345", Tools.nowUTC());
         assertThat(message.getSize()).isEqualTo(45);
 
@@ -460,6 +490,7 @@ public class MessageTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testGetValidationErrorsWithEmptyMessage() throws Exception {
         final Message message = new Message("", "source", Tools.nowUTC());
 
@@ -467,6 +498,7 @@ public class MessageTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testGetValidationErrorsWithNullMessage() throws Exception {
         final Message message = new Message(null, "source", Tools.nowUTC());
 
@@ -559,5 +591,51 @@ public class MessageTest {
         assertThat(Message.sizeForField("", 1L)).isEqualTo(8);
         assertThat(Message.sizeForField("", 1.0f)).isEqualTo(4);
         assertThat(Message.sizeForField("", 1.0d)).isEqualTo(8);
+    }
+
+    @Test
+    public void assignZonedDateTimeAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, ZonedDateTime.of(2018, 4, 19, 12, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(message.getTimestamp()).isEqualTo(new DateTime(2018, 4, 19, 12, 0, 0, 0, DateTimeZone.UTC));
+    }
+
+    @Test
+    public void assignOffsetDateTimeAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, OffsetDateTime.of(2018, 4, 19, 12, 0, 0, 0, ZoneOffset.UTC));
+        assertThat(message.getTimestamp()).isEqualTo(new DateTime(2018, 4, 19, 12, 0, 0, 0, DateTimeZone.UTC));
+    }
+
+    @Test
+    @SuppressForbidden("Intentionally using system default time zone")
+    public void assignLocalDateTimeAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, LocalDateTime.of(2018, 4, 19, 12, 0, 0, 0));
+        final DateTimeZone defaultTimeZone = DateTimeZone.getDefault();
+        assertThat(message.getTimestamp()).isEqualTo(new DateTime(2018, 4, 19, 12, 0, 0, 0, defaultTimeZone).withZone(DateTimeZone.UTC));
+    }
+
+    @Test
+    @SuppressForbidden("Intentionally using system default time zone")
+    public void assignLocalDateAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, LocalDate.of(2018, 4, 19));
+        final DateTimeZone defaultTimeZone = DateTimeZone.getDefault();
+        assertThat(message.getTimestamp()).isEqualTo(new DateTime(2018, 4, 19, 0, 0, 0, 0, defaultTimeZone).withZone(DateTimeZone.UTC));
+    }
+
+    @Test
+    public void assignInstantAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, Instant.ofEpochMilli(1524139200000L));
+        assertThat(message.getTimestamp()).isEqualTo(new DateTime(2018, 4, 19, 12, 0, 0, 0, DateTimeZone.UTC));
+    }
+
+    @Test
+    public void assignUnsupportedTemporalTypeAsTimestamp() {
+        final Message message = new Message("message", "source", Tools.nowUTC());
+        message.addField(Message.FIELD_TIMESTAMP, ThaiBuddhistDate.of(0, 4, 19));
+        assertThat(message.getTimestamp()).isGreaterThan(new DateTime(2018, 4, 19, 0, 0, 0, 0, DateTimeZone.UTC));
     }
 }

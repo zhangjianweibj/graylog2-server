@@ -1,10 +1,25 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Modal, Button } from 'react-bootstrap';
 import $ from 'jquery';
 
+import { Button, Modal } from 'components/graylog';
 import BootstrapModalWrapper from 'components/bootstrap/BootstrapModalWrapper';
-
 import { validate } from 'legacy/validations.js';
 
 /**
@@ -12,18 +27,9 @@ import { validate } from 'legacy/validations.js';
  * has, and providing form validation using HTML5 and our custom validation.
  */
 class BootstrapModalForm extends React.Component {
-  static defaultProps = {
-    formProps: {},
-    cancelButtonText: 'Cancel',
-    submitButtonText: 'Submit',
-    submitButtonDisabled: false,
-    onModalOpen: () => {},
-    onModalClose: () => {},
-    onSubmitForm: undefined,
-    onCancel: () => {},
-  }
-
   static propTypes = {
+    backdrop: PropTypes.oneOf([true, false, 'static']),
+    bsSize: PropTypes.oneOf(['lg', 'large', 'sm', 'small']),
     /* Modal title */
     title: PropTypes.oneOfType([PropTypes.string, PropTypes.node]).isRequired,
     /* Form contents, included in the modal body */
@@ -42,66 +48,87 @@ class BootstrapModalForm extends React.Component {
     /* Text to use in the submit button. "Submit" is the default */
     submitButtonText: PropTypes.string,
     submitButtonDisabled: PropTypes.bool,
-  }
+    show: PropTypes.bool,
+  };
+
+  static defaultProps = {
+    backdrop: undefined,
+    formProps: {},
+    cancelButtonText: 'Cancel',
+    submitButtonText: 'Submit',
+    submitButtonDisabled: false,
+    onModalOpen: () => {},
+    onModalClose: () => {},
+    onSubmitForm: undefined,
+    onCancel: () => {},
+    bsSize: undefined,
+    show: false,
+  };
 
   onModalCancel = () => {
-    this.props.onCancel();
+    const { onCancel } = this.props;
+
+    onCancel();
     this.close();
-  }
+  };
 
-  open = () => {
-    this.modal.open();
-  }
+  open = () => this.modal.open();
 
-  close = () => {
-    this.modal.close();
-  }
+  close = () => this.modal.close();
 
   submit = (event) => {
     const formDOMNode = this.form;
     const $formDOMNode = $(formDOMNode);
 
-    if ((typeof formDOMNode.checkValidity === 'function' && !formDOMNode.checkValidity()) ||
-      (typeof $formDOMNode.checkValidity === 'function' && !$formDOMNode.checkValidity())) {
+    if ((typeof formDOMNode.checkValidity === 'function' && !formDOMNode.checkValidity())
+      || (typeof $formDOMNode.checkValidity === 'function' && !$formDOMNode.checkValidity())) {
       event.preventDefault();
+
       return;
     }
 
     // Check custom validation for plugin fields
     if (!validate(formDOMNode)) {
       event.preventDefault();
+
       return;
     }
 
     // If function is not given, let the browser continue propagating the submit event
-    if (typeof this.props.onSubmitForm === 'function') {
+    const { onSubmitForm } = this.props;
+
+    if (typeof onSubmitForm === 'function') {
       event.preventDefault();
-      this.props.onSubmitForm(event);
+      onSubmitForm(event);
     }
-  }
+  };
 
   render() {
+    const { backdrop, submitButtonDisabled, formProps, bsSize, onModalClose, cancelButtonText, show, submitButtonText, onModalOpen, title, children } = this.props;
     const body = (
       <div className="container-fluid">
-        {this.props.children}
+        {children}
       </div>
     );
 
     return (
       <BootstrapModalWrapper ref={(c) => { this.modal = c; }}
-                             onOpen={this.props.onModalOpen}
-                             onClose={this.props.onModalClose}
+                             onOpen={onModalOpen}
+                             onClose={onModalClose}
+                             bsSize={bsSize}
+                             showModal={show}
+                             backdrop={backdrop}
                              onHide={this.onModalCancel}>
         <Modal.Header closeButton>
-          <Modal.Title>{this.props.title}</Modal.Title>
+          <Modal.Title>{title}</Modal.Title>
         </Modal.Header>
-        <form ref={(c) => { this.form = c; }} onSubmit={this.submit} {...this.props.formProps}>
+        <form ref={(c) => { this.form = c; }} onSubmit={this.submit} {...formProps} data-testid="modal-form">
           <Modal.Body>
             {body}
           </Modal.Body>
           <Modal.Footer>
-            <Button type="button" onClick={this.onModalCancel}>{this.props.cancelButtonText}</Button>
-            <Button type="submit" disabled={this.props.submitButtonDisabled} bsStyle="primary">{this.props.submitButtonText}</Button>
+            <Button type="button" onClick={this.onModalCancel}>{cancelButtonText}</Button>
+            <Button type="submit" disabled={submitButtonDisabled} bsStyle="primary">{submitButtonText}</Button>
           </Modal.Footer>
         </form>
       </BootstrapModalWrapper>

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.syslog.tcp;
 
@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public class SyslogTCPFramingRouterHandlerTest {
     private EmbeddedChannel channel;
@@ -101,11 +102,9 @@ public class SyslogTCPFramingRouterHandlerTest {
         final ByteBuf buf = Unpooled.copiedBuffer("<45>012345678901234567890123456789\n", StandardCharsets.US_ASCII);
         assertThat(buf.readableBytes()).isGreaterThan(32);
 
-        try {
-            channel.writeInbound(buf);
-        } catch (TooLongFrameException e) {
-            assertThat(e).hasMessage("frame length (34) exceeds the allowed maximum (32)");
-        }
+        assertThatExceptionOfType(TooLongFrameException.class)
+                .isThrownBy(() -> channel.writeInbound(buf))
+                .withMessage("frame length (34) exceeds the allowed maximum (32)");
     }
 
     @Test

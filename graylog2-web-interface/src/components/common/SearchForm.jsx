@@ -1,8 +1,48 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
-import React from 'react';
+import * as React from 'react';
 import Promise from 'bluebird';
-import { Button } from 'react-bootstrap';
-import { Spinner } from 'components/common';
+import styled from 'styled-components';
+
+import { Button } from 'components/graylog';
+import Spinner from 'components/common/Spinner';
+
+const FormContent = styled.div(({ buttonLeftMargin }) => `
+  > :not(:last-child) {
+    margin-right: ${buttonLeftMargin}px;
+  }
+
+  > * {
+    display: inline-block;
+    vertical-align: top;
+    margin-bottom: 5px;
+  }
+`);
+
+const HelpFeedback = styled.span`
+  &.form-control-feedback {
+    pointer-events: auto;
+  }
+
+  .btn {
+    max-width: 34px;
+  }
+`;
 
 /**
  * Component that renders a customizable search form. The component
@@ -27,6 +67,8 @@ class SearchForm extends React.Component {
     onReset: PropTypes.func,
     /** Search field label. */
     label: PropTypes.string,
+    /** The className is needed to override the component style with styled-components  */
+    className: PropTypes.string,
     /** Search field placeholder. */
     placeholder: PropTypes.string,
     /** Class name for the search form container. */
@@ -40,9 +82,9 @@ class SearchForm extends React.Component {
     /** bsStyle for search button. */
     searchBsStyle: PropTypes.string,
     /** Text to display in the search button. */
-    searchButtonLabel: PropTypes.string,
+    searchButtonLabel: PropTypes.node,
     /** Text to display in the reset button. */
-    resetButtonLabel: PropTypes.string,
+    resetButtonLabel: PropTypes.node,
     /**
      * Text to display in the search button while the search is loading. This
      * will only be used if `useLoadingState` is true.
@@ -54,15 +96,29 @@ class SearchForm extends React.Component {
      * the callback function in the `onSearch` method is called.
      */
     useLoadingState: PropTypes.bool,
+    /**
+     * Specifies a component that should be render inside the search input
+     * field, and is meant to act as a trigger to display help about the query.
+     * You may want to enlarge `queryWidth` to give the user more room to write the
+     * query if you use this prop.
+     *
+     * **Note:** Due to size constraints rendering this component inside the input,
+     * this component should contain very little text and should be very light. For
+     * instance, a `Button` component with `bsStyle="link"` and a font-awesome icon
+     * inside would work just fine.
+     */
+    queryHelpComponent: PropTypes.element,
     /** Elements to display on the right of the search form. */
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.element),
       PropTypes.element,
     ]),
+    focusAfterMount: PropTypes.bool,
   };
 
   static defaultProps = {
     query: '',
+    className: '',
     onQueryChange: () => {},
     onReset: null,
     label: null,
@@ -76,17 +132,25 @@ class SearchForm extends React.Component {
     resetButtonLabel: 'Reset',
     useLoadingState: false,
     loadingLabel: 'Loading...',
+    queryHelpComponent: null,
     children: null,
+    focusAfterMount: false,
   };
 
-  state = {
-    query: this.props.query,
-    isLoading: false,
-  };
+  constructor(props) {
+    super(props);
 
-  componentWillReceiveProps(nextProps) {
+    this.state = {
+      query: props.query,
+      isLoading: false,
+    };
+  }
+
+  UNSAFE_componentWillReceiveProps(nextProps) {
+    const { query } = this.props;
+
     // The query might get reset outside of this component so we have to adjust the internal state
-    if (this.props.query !== nextProps.query) {
+    if (query !== nextProps.query) {
       this.setState({ query: nextProps.query });
     }
   }
@@ -99,8 +163,10 @@ class SearchForm extends React.Component {
    * @private
    */
   _setLoadingState = () => {
+    const { useLoadingState } = this.props;
+
     return new Promise((resolve) => {
-      if (this.props.useLoadingState) {
+      if (useLoadingState) {
         this.setState({ isLoading: true }, resolve);
       } else {
         resolve();
@@ -109,64 +175,106 @@ class SearchForm extends React.Component {
   };
 
   _resetLoadingState = () => {
-    if (this.props.useLoadingState) {
+    const { useLoadingState } = this.props;
+
+    if (useLoadingState) {
       this.setState({ isLoading: false });
     }
   };
 
   _onSearch = (e) => {
-    e.preventDefault();
+    const { useLoadingState, onSearch } = this.props;
+    const { query } = this.state;
 
-    this._setLoadingState().then(() => {
-      this.props.onSearch(this.state.query, this._resetLoadingState);
-    });
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (useLoadingState) {
+      this._setLoadingState().then(() => {
+        onSearch(query, this._resetLoadingState);
+      });
+    } else {
+      onSearch(query);
+    }
   };
 
   _onReset = () => {
     this._resetLoadingState();
-    this.setState({ query: this.props.query });
-    this.props.onQueryChange(this.props.query);
-    this.props.onReset();
+    const { query, onQueryChange, onReset } = this.props;
+
+    this.setState({ query: query });
+    onQueryChange(query);
+    onReset();
   };
 
   handleQueryChange = (e) => {
+    const { onQueryChange } = this.props;
     const query = e.target.value;
+
     this.setState({ query: query });
-    this.props.onQueryChange(query);
+    onQueryChange(query);
   };
 
   render() {
+    const {
+      queryHelpComponent,
+      queryWidth,
+      focusAfterMount,
+      children,
+      className,
+      placeholder,
+      resetButtonLabel,
+      buttonLeftMargin,
+      label,
+      onReset,
+      wrapperClass,
+      topMargin,
+      searchButtonLabel,
+      loadingLabel,
+      searchBsStyle,
+    } = this.props;
+    const { query, isLoading } = this.state;
+
     return (
-      <div className={this.props.wrapperClass} style={{ marginTop: this.props.topMargin }}>
+      <div className={`${wrapperClass} ${className}`} style={{ marginTop: topMargin }}>
         <form className="form-inline" onSubmit={this._onSearch}>
-          <div className="form-group" >
-            {this.props.label && <label htmlFor="common-search-form-query-input" className="control-label">{this.props.label}</label>}
-            <input id="common-search-form-query-input"
-                   onChange={this.handleQueryChange}
-                   value={this.state.query}
-                   placeholder={this.props.placeholder}
-                   type="text"
-                   style={{ width: this.props.queryWidth }}
-                   className="query form-control"
-                   autoComplete="off"
-                   spellCheck="false" />
-          </div>
-          <div className="form-group" style={{ marginLeft: this.props.buttonLeftMargin }}>
-            <Button bsStyle={this.props.searchBsStyle}
-                    type="submit"
-                    disabled={this.state.isLoading}
-                    className="submit-button">
-              {this.state.isLoading ? <Spinner text={this.props.loadingLabel} /> : this.props.searchButtonLabel}
-            </Button>
-          </div>
-          {this.props.onReset &&
-            <div className="form-group" style={{ marginLeft: this.props.buttonLeftMargin }}>
-              <Button type="reset" className="reset-button" onClick={this._onReset}>
-                {this.props.resetButtonLabel}
-              </Button>
+          <FormContent buttonLeftMargin={buttonLeftMargin}>
+            <div className={`form-group ${queryHelpComponent ? 'has-feedback' : ''}`}>
+              {label && (
+                <label htmlFor="common-search-form-query-input" className="control-label">
+                  {label}
+                </label>
+              )}
+              <input id="common-search-form-query-input"
+                   /* eslint-disable-next-line jsx-a11y/no-autofocus */
+                     autoFocus={focusAfterMount}
+                     onChange={this.handleQueryChange}
+                     value={query}
+                     placeholder={placeholder}
+                     type="text"
+                     style={{ width: queryWidth }}
+                     className="query form-control"
+                     autoComplete="off"
+                     spellCheck="false" />
+              {queryHelpComponent && (
+                <HelpFeedback className="form-control-feedback">{queryHelpComponent}</HelpFeedback>
+              )}
             </div>
-          }
-          {this.props.children}
+
+            <Button bsStyle={searchBsStyle}
+                    type="submit"
+                    disabled={isLoading}
+                    className="submit-button">
+              {isLoading ? <Spinner text={loadingLabel} delay={0} /> : searchButtonLabel}
+            </Button>
+
+            {onReset && (
+              <Button type="reset" className="reset-button" onClick={this._onReset}>
+                {resetButtonLabel}
+              </Button>
+            )}
+            {children}
+          </FormContent>
         </form>
       </div>
     );

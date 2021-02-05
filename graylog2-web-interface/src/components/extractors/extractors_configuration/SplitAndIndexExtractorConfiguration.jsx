@@ -1,15 +1,32 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Button, Col, Row } from 'react-bootstrap';
 
+import { Col, Row, Button } from 'components/graylog';
+import { Icon } from 'components/common';
 import { Input } from 'components/bootstrap';
 import StoreProvider from 'injection/StoreProvider';
-const ToolsStore = StoreProvider.getStore('Tools');
-
 import UserNotification from 'util/UserNotification';
 import ExtractorUtils from 'util/ExtractorUtils';
 import FormUtils from 'util/FormsUtils';
+
+const ToolsStore = StoreProvider.getStore('Tools');
 
 const SplitAndIndexExtractorConfiguration = createReactClass({
   displayName: 'SplitAndIndexExtractorConfiguration',
@@ -32,7 +49,7 @@ const SplitAndIndexExtractorConfiguration = createReactClass({
     this.props.onChange(this.state.configuration);
   },
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({ configuration: this._getEffectiveConfiguration(nextProps.configuration) });
   },
 
@@ -46,6 +63,7 @@ const SplitAndIndexExtractorConfiguration = createReactClass({
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
       const newConfig = this.state.configuration;
+
       newConfig[key] = FormUtils.getValueFromInput(event.target);
       this.props.onChange(newConfig);
     };
@@ -60,10 +78,12 @@ const SplitAndIndexExtractorConfiguration = createReactClass({
     promise.then((result) => {
       if (!result.successful) {
         UserNotification.warning('We were not able to run the split and index extraction. Please check your parameters.');
+
         return;
       }
 
       const preview = (result.cut ? <samp>{result.cut}</samp> : '');
+
       this.props.onExtractorPreviewLoad(preview);
     });
 
@@ -71,7 +91,8 @@ const SplitAndIndexExtractorConfiguration = createReactClass({
   },
 
   _isTryButtonDisabled() {
-    const configuration = this.state.configuration;
+    const { configuration } = this.state;
+
     return this.state.trying || configuration.split_by === '' || configuration.index === undefined || configuration.index < 1 || !this.props.exampleMessage;
   },
 
@@ -116,7 +137,7 @@ const SplitAndIndexExtractorConfiguration = createReactClass({
         <Row>
           <Col mdOffset={2} md={10}>
             <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+              {this.state.trying ? <Icon name="spinner" spin /> : 'Try'}
             </Button>
           </Col>
         </Row>

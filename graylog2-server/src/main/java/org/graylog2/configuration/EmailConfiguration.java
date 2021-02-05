@@ -1,22 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.configuration;
 
 import com.github.joschi.jadconfig.Parameter;
+import com.github.joschi.jadconfig.ValidationException;
+import com.github.joschi.jadconfig.ValidatorMethod;
 import com.github.joschi.jadconfig.validators.InetPortValidator;
 
 import java.net.URI;
@@ -35,10 +37,10 @@ public class EmailConfiguration {
     private boolean useAuth = false;
 
     @Parameter(value = "transport_email_use_tls")
-    private boolean useTls = false;
+    private boolean useTls = true;
 
     @Parameter(value = "transport_email_use_ssl")
-    private boolean useSsl = true;
+    private boolean useSsl = false;
 
     @Parameter(value = "transport_email_auth_username")
     private String username;
@@ -90,5 +92,13 @@ public class EmailConfiguration {
 
     public URI getWebInterfaceUri() {
         return webInterfaceUri;
+    }
+
+    @ValidatorMethod
+    @SuppressWarnings("unused")
+    public void validateConfig() throws ValidationException {
+        if (isUseTls() && isUseSsl()) {
+            throw new ValidationException("SMTP over SSL (SMTPS) and SMTP with STARTTLS cannot be used at the same time.");
+        }
     }
 }

@@ -1,20 +1,19 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
-
 package org.graylog2.shared.buffers.processors;
 
 import com.codahale.metrics.Counter;
@@ -197,22 +196,22 @@ public class DecodingProcessor implements EventHandler<MessageEvent> {
             switch (node.type) {
                 case SERVER:
                     // Always use the last source node.
-                    if (message.getField("gl2_source_input") != null) {
+                    if (message.getField(Message.FIELD_GL2_SOURCE_INPUT) != null) {
                         LOG.debug("Multiple server nodes ({} {}) set for message id {}",
-                                message.getField("gl2_source_input"), node.nodeId, message.getId());
+                                message.getField(Message.FIELD_GL2_SOURCE_INPUT), node.nodeId, message.getId());
                     }
-                    message.addField("gl2_source_input", node.inputId);
-                    message.addField("gl2_source_node", node.nodeId);
+                    message.addField(Message.FIELD_GL2_SOURCE_INPUT, node.inputId);
+                    message.addField(Message.FIELD_GL2_SOURCE_NODE, node.nodeId);
                     break;
                 // TODO Due to be removed in Graylog 3.x
                 case RADIO:
                     // Always use the last source node.
-                    if (message.getField("gl2_source_radio_input") != null) {
+                    if (message.getField(Message.FIELD_GL2_SOURCE_RADIO_INPUT) != null) {
                         LOG.debug("Multiple radio nodes ({} {}) set for message id {}",
-                                message.getField("gl2_source_radio_input"), node.nodeId, message.getId());
+                                message.getField(Message.FIELD_GL2_SOURCE_RADIO_INPUT), node.nodeId, message.getId());
                     }
-                    message.addField("gl2_source_radio_input", node.inputId);
-                    message.addField("gl2_source_radio", node.nodeId);
+                    message.addField(Message.FIELD_GL2_SOURCE_RADIO_INPUT, node.inputId);
+                    message.addField(Message.FIELD_GL2_SOURCE_RADIO, node.nodeId);
                     break;
             }
         }
@@ -228,12 +227,12 @@ public class DecodingProcessor implements EventHandler<MessageEvent> {
         final ResolvableInetSocketAddress remoteAddress = raw.getRemoteAddress();
         if (remoteAddress != null) {
             final String addrString = InetAddresses.toAddrString(remoteAddress.getAddress());
-            message.addField("gl2_remote_ip", addrString);
+            message.addField(Message.FIELD_GL2_REMOTE_IP, addrString);
             if (remoteAddress.getPort() > 0) {
-                message.addField("gl2_remote_port", remoteAddress.getPort());
+                message.addField(Message.FIELD_GL2_REMOTE_PORT, remoteAddress.getPort());
             }
             if (remoteAddress.isReverseLookedUp()) { // avoid reverse lookup if the hostname is available
-                message.addField("gl2_remote_hostname", remoteAddress.getHostName());
+                message.addField(Message.FIELD_GL2_REMOTE_HOSTNAME, remoteAddress.getHostName());
             }
             if (Strings.isNullOrEmpty(message.getSource())) {
                 message.setSource(addrString);
@@ -248,6 +247,10 @@ public class DecodingProcessor implements EventHandler<MessageEvent> {
         if (Strings.isNullOrEmpty(message.getSource())) {
             message.setSource("unknown");
         }
+
+        // The raw message timestamp is the receive time of the message. It has been created before writing the raw
+        // message to the journal.
+        message.setReceiveTime(raw.getTimestamp());
 
         metricRegistry.meter(name(baseMetricName, "processedMessages")).mark();
         decodedTrafficCounter.inc(message.getSize());

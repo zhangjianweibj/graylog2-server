@@ -1,23 +1,65 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Row, Col } from 'react-bootstrap';
-import naturalSort from 'javascript-natural-sort';
+import styled from 'styled-components';
 
+import { Row, Col } from 'components/graylog';
+import { naturalSortIgnoreCase } from 'util/SortUtils';
 import EntityList from 'components/common/EntityList';
+import { IfPermitted, Spinner, SearchForm } from 'components/common';
+import StoreProvider from 'injection/StoreProvider';
+import ActionsProvider from 'injection/ActionsProvider';
+
 import InputListItem from './InputListItem';
-import { IfPermitted, Spinner } from 'components/common';
 import CreateInputControl from './CreateInputControl';
 
-import ActionsProvider from 'injection/ActionsProvider';
 const InputsActions = ActionsProvider.getActions('Inputs');
 const SingleNodeActions = ActionsProvider.getActions('SingleNode');
 const InputTypesActions = ActionsProvider.getActions('InputTypes');
 
-import StoreProvider from 'injection/StoreProvider';
 const InputsStore = StoreProvider.getStore('Inputs');
 const SingleNodeStore = StoreProvider.getStore('SingleNode');
+
+const InputListRow = styled(Row)`
+  h2 {
+    margin-bottom: 5px;
+  }
+
+  .alert {
+    margin-top: 10px;
+  }
+
+  .static-fields {
+    margin-top: 10px;
+    margin-left: 3px;
+
+    ul {
+      margin: 0;
+      padding: 0;
+
+      .remove-static-field {
+        margin-left: 5px;
+      }
+    }
+  }
+`;
 
 const InputsList = createReactClass({
   displayName: 'InputsList',
@@ -29,10 +71,19 @@ const InputsList = createReactClass({
 
   mixins: [Reflux.connect(SingleNodeStore), Reflux.listenTo(InputsStore, '_splitInputs')],
 
+  getDefaultProps() {
+    return {
+      node: undefined,
+    };
+  },
+
   getInitialState() {
     return {
       globalInputs: undefined,
       localInputs: undefined,
+      filteredGlobalInputs: undefined,
+      filteredLocalInputs: undefined,
+      filter: undefined,
     };
   },
 
@@ -43,23 +94,29 @@ const InputsList = createReactClass({
   },
 
   _splitInputs(state) {
-    const inputs = state.inputs;
+    const { inputs } = state;
     const globalInputs = inputs
-      .filter(input => input.global === true)
-      .sort((inputA, inputB) => naturalSort(inputA.title, inputB.title));
+      .filter((input) => input.global === true)
+      .sort((inputA, inputB) => naturalSortIgnoreCase(inputA.title, inputB.title));
     let localInputs = inputs
-      .filter(input => input.global === false)
-      .sort((inputA, inputB) => naturalSort(inputA.title, inputB.title));
+      .filter((input) => input.global === false)
+      .sort((inputA, inputB) => naturalSortIgnoreCase(inputA.title, inputB.title));
 
     if (this.props.node) {
-      localInputs = localInputs.filter(input => input.node === this.props.node.node_id);
+      localInputs = localInputs.filter((input) => input.node === this.props.node.node_id);
     }
 
-    this.setState({ globalInputs: globalInputs, localInputs: localInputs });
+    this.setState({
+      globalInputs: globalInputs,
+      localInputs: localInputs,
+    });
+
+    this._onFilterInputs(this.state.filter);
   },
 
   _isLoading() {
-    return !(this.state.localInputs && this.state.globalInputs && this.state.node);
+    return !(this.state.localInputs && this.state.globalInputs && this.state.node && this.state.filteredLocalInputs
+      && this.state.filteredGlobalInputs);
   },
 
   _formatInput(input) {
@@ -70,6 +127,60 @@ const InputsList = createReactClass({
     return (this.props.node ? ' on this node' : '');
   },
 
+  _onFilterInputs(filter, resetLoadingState) {
+    const { globalInputs, localInputs } = this.state;
+    const regExp = RegExp(filter, 'i');
+
+    if (!globalInputs || !localInputs) {
+      if (resetLoadingState) {
+        resetLoadingState();
+      }
+
+      return;
+    }
+
+    if (!filter || filter.length <= 0) {
+      this.setState({
+        filteredGlobalInputs: globalInputs,
+        filteredLocalInputs: localInputs,
+        filter: undefined,
+      });
+
+      if (resetLoadingState) {
+        resetLoadingState();
+      }
+
+      return;
+    }
+
+    const filterMethod = (input) => {
+      return regExp.test(input.title);
+    };
+
+    const filteredGlobalInputs = this.state.globalInputs.filter(filterMethod);
+    const filteredLocalInputs = this.state.localInputs.filter(filterMethod);
+
+    this.setState({
+      filteredGlobalInputs: filteredGlobalInputs,
+      filteredLocalInputs: filteredLocalInputs,
+      filter: filter,
+    });
+
+    if (resetLoadingState) {
+      resetLoadingState();
+    }
+  },
+
+  _onFilterReset() {
+    const { globalInputs, localInputs } = this.state;
+
+    this.setState({
+      filteredGlobalInputs: globalInputs,
+      filteredLocalInputs: localInputs,
+      filter: undefined,
+    });
+  },
+
   render() {
     if (this._isLoading()) {
       return <Spinner />;
@@ -77,34 +188,43 @@ const InputsList = createReactClass({
 
     return (
       <div>
-        {!this.props.node &&
+        {!this.props.node
+        && (
         <IfPermitted permissions="inputs:create">
           <CreateInputControl />
         </IfPermitted>
-        }
+        )}
 
-        <Row id="global-inputs" className="content input-list">
+        <InputListRow id="filter-input" className="content">
           <Col md={12}>
+            <SearchForm onSearch={this._onFilterInputs}
+                        topMargin={0}
+                        onReset={this._onFilterReset}
+                        searchButtonLabel="Filter"
+                        placeholder="Filter by title" />
+            <br />
             <h2>
               Global inputs
               &nbsp;
               <small>{this.state.globalInputs.length} configured{this._nodeAffix()}</small>
             </h2>
-            <EntityList bsNoItemsStyle="info" noItemsText="There are no global inputs."
-                        items={this.state.globalInputs.map(input => this._formatInput(input))} />
-          </Col>
-        </Row>
-        <Row id="local-inputs" className="content input-list">
-          <Col md={12}>
+            <EntityList bsNoItemsStyle="info"
+                        noItemsText={this.state.globalInputs.length <= 0 ? 'There are no global inputs.'
+                          : 'No global inputs match the filter'}
+                        items={this.state.filteredGlobalInputs.map((input) => this._formatInput(input))} />
+            <br />
+            <br />
             <h2>
               Local inputs
               &nbsp;
               <small>{this.state.localInputs.length} configured{this._nodeAffix()}</small>
             </h2>
-            <EntityList bsNoItemsStyle="info" noItemsText={`There are no local inputs${this._nodeAffix()}.`}
-                        items={this.state.localInputs.map(input => this._formatInput(input))} />
+            <EntityList bsNoItemsStyle="info"
+                        noItemsText={this.state.localInputs.length <= 0 ? 'There are no local inputs.'
+                          : 'No local inputs match the filter'}
+                        items={this.state.filteredLocalInputs.map((input) => this._formatInput(input))} />
           </Col>
-        </Row>
+        </InputListRow>
       </div>
     );
   },

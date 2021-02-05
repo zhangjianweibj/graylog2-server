@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.outputs;
 
@@ -54,7 +54,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> messageOutputs = outputRouter.getOutputsForMessage(message);
 
-        assertEquals(messageOutputs.size(), 1);
+        assertEquals(1, messageOutputs.size());
         assertTrue(messageOutputs.contains(defaultMessageOutput));
     }
 
@@ -65,7 +65,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> messageOutputs = outputRouter.getMessageOutputsForStream(stream);
 
-        assertEquals(messageOutputs.size(), 0);
+        assertEquals(0, messageOutputs.size());
     }
 
     @Test
@@ -82,7 +82,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> messageOutputs = outputRouter.getMessageOutputsForStream(stream);
 
-        assertEquals(messageOutputs.size(), 1);
+        assertEquals(1, messageOutputs.size());
         assertTrue(messageOutputs.contains(messageOutput));
     }
 
@@ -105,7 +105,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> messageOutputs = outputRouter.getMessageOutputsForStream(stream);
 
-        assertEquals(messageOutputs.size(), 2);
+        assertEquals(2, messageOutputs.size());
         assertTrue(messageOutputs.contains(messageOutput1));
         assertTrue(messageOutputs.contains(messageOutput2));
     }
@@ -126,7 +126,7 @@ public class OutputRouterTest {
         final Collection<MessageOutput> messageOutputs = outputRouter.getOutputsForMessage(message);
 
         // Verification
-        assertEquals(messageOutputs.size(), 2);
+        assertEquals(2, messageOutputs.size());
         assertTrue(messageOutputs.contains(defaultMessageOutput));
         assertTrue(messageOutputs.contains(messageOutput));
     }
@@ -148,7 +148,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> result = outputRouter.getOutputsForMessage(message);
 
-        assertEquals(result.size(), 3);
+        assertEquals(3, result.size());
         assertTrue(result.contains(defaultMessageOutput));
         assertTrue(result.contains(messageOutput1));
         assertTrue(result.contains(messageOutput2));
@@ -169,7 +169,7 @@ public class OutputRouterTest {
 
         final Collection<MessageOutput> result = outputRouter.getOutputsForMessage(message);
 
-        assertEquals(result.size(), 2);
+        assertEquals(2, result.size());
         assertTrue(result.contains(defaultMessageOutput));
         assertTrue(result.contains(messageOutput));
     }

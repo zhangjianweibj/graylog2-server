@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.indexer.fieldtypes;
 
@@ -35,7 +35,8 @@ public class FieldTypeMapper {
     private static final String PROP_FULL_TEXT_SEARCH = "full-text-search";
     private static final String PROP_NUMERIC = "numeric";
 
-    private static final FieldTypes.Type STRING_TYPE = createType("string", of(PROP_FULL_TEXT_SEARCH));
+    private static final FieldTypes.Type STRING_TYPE = createType("string", of(PROP_ENUMERABLE));
+    private static final FieldTypes.Type STRING_FTS_TYPE = createType("string", of(PROP_FULL_TEXT_SEARCH));
     private static final FieldTypes.Type LONG_TYPE = createType("long", of(PROP_NUMERIC, PROP_ENUMERABLE));
     private static final FieldTypes.Type INT_TYPE = createType("int", of(PROP_NUMERIC, PROP_ENUMERABLE));
     private static final FieldTypes.Type SHORT_TYPE = createType("short", of(PROP_NUMERIC, PROP_ENUMERABLE));
@@ -53,8 +54,7 @@ public class FieldTypeMapper {
      */
     private static final ImmutableMap<String, FieldTypes.Type> TYPE_MAP = ImmutableMap.<String, FieldTypes.Type>builder()
             .put("keyword", STRING_TYPE) // since ES 5.x
-            .put("text", STRING_TYPE) // since ES 5.x
-            .put("string", STRING_TYPE) // until ES 2.x
+            .put("text", STRING_FTS_TYPE) // since ES 5.x
             .put("long", LONG_TYPE)
             .put("integer", INT_TYPE)
             .put("short", SHORT_TYPE)

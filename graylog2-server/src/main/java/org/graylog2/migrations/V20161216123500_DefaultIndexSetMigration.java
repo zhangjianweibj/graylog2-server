@@ -1,28 +1,26 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
 import org.graylog2.configuration.ElasticsearchConfiguration;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.indexer.indexset.DefaultIndexSetCreated;
 import org.graylog2.indexer.indexset.IndexSetConfig;
 import org.graylog2.indexer.indexset.IndexSetService;
 import org.graylog2.indexer.indexset.V20161216123500_Succeeded;
-import org.graylog2.indexer.indexset.events.IndexSetCreatedEvent;
 import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,17 +42,14 @@ public class V20161216123500_DefaultIndexSetMigration extends Migration {
     private final ElasticsearchConfiguration elasticsearchConfiguration;
     private final IndexSetService indexSetService;
     private final ClusterConfigService clusterConfigService;
-    private final ClusterEventBus clusterEventBus;
 
     @Inject
     public V20161216123500_DefaultIndexSetMigration(final ElasticsearchConfiguration elasticsearchConfiguration,
                                                     final IndexSetService indexSetService,
-                                                    final ClusterConfigService clusterConfigService,
-                                                    final ClusterEventBus clusterEventBus) {
+                                                    final ClusterConfigService clusterConfigService) {
         this.elasticsearchConfiguration = elasticsearchConfiguration;
         this.indexSetService = indexSetService;
         this.clusterConfigService = clusterConfigService;
-        this.clusterEventBus = clusterEventBus;
     }
 
     @Override
@@ -97,9 +92,6 @@ public class V20161216123500_DefaultIndexSetMigration extends Migration {
                 .build();
 
         final IndexSetConfig savedConfig = indexSetService.save(updatedConfig);
-
-        // Publish event to cluster event bus so the stream router will reload.
-        clusterEventBus.post(IndexSetCreatedEvent.create(savedConfig));
 
         LOG.debug("Successfully updated index set: {}", savedConfig);
     }

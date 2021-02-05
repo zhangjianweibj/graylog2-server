@@ -1,8 +1,26 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button } from 'react-bootstrap';
 
+import { Button } from 'components/graylog';
+import { Icon } from 'components/common';
 import StoreProvider from 'injection/StoreProvider';
+
 const InputStaticFieldsStore = StoreProvider.getStore('InputStaticFields');
 
 class InputStaticFields extends React.Component {
@@ -21,7 +39,7 @@ class InputStaticFields extends React.Component {
   _deleteButton = (fieldName) => {
     return (
       <Button bsStyle="link" bsSize="xsmall" style={{ verticalAlign: 'baseline' }} onClick={this._deleteStaticField(fieldName)}>
-        <i className="fa fa-remove" />
+        <Icon name="remove" />
       </Button>
     );
   };
@@ -43,6 +61,7 @@ class InputStaticFields extends React.Component {
 
   render() {
     const staticFieldNames = Object.keys(this.props.input.static_fields);
+
     if (staticFieldNames.length === 0) {
       return <div />;
     }

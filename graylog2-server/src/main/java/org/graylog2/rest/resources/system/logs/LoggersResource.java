@@ -1,23 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.system.logs;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import io.swagger.annotations.Api;
@@ -35,6 +36,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.impl.ThrowableProxy;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
+import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.graylog2.audit.AuditEventTypes;
 import org.graylog2.audit.jersey.AuditEvent;
 import org.graylog2.log4j.MemoryAppender;
@@ -76,7 +78,7 @@ public class LoggersResource extends RestResource {
     private static final String MEMORY_APPENDER_NAME = "graylog-internal-logs";
 
     private static final Map<String, Subsystem> SUBSYSTEMS = ImmutableMap.<String, Subsystem>of(
-            "graylog", new Subsystem("Graylog", "org.graylog2", "All messages from Graylog-owned systems."),
+            "graylog", new Subsystem("Graylog", ImmutableList.of("org.graylog2", "org.graylog"), "All messages from Graylog-owned systems."),
             "indexer", new Subsystem("Indexer", "org.elasticsearch", "All messages related to indexing and searching."),
             "authentication", new Subsystem("Authentication", "org.apache.shiro", "All user authentication messages."),
             "sockets", new Subsystem("Sockets", "netty", "All messages related to socket communication."));
@@ -120,13 +122,13 @@ public class LoggersResource extends RestResource {
             }
 
             try {
-                final String category = subsystem.getValue().getCategory();
+                final String category = subsystem.getValue().getCategories().get(0);
                 final Level level = getLoggerLevel(category);
 
                 subsystems.put(subsystem.getKey(),
                         SingleSubsystemSummary.create(
                                 subsystem.getValue().getTitle(),
-                                subsystem.getValue().getCategory(),
+                                subsystem.getValue().getCategories(),
                                 subsystem.getValue().getDescription(),
                                 level.toString().toLowerCase(Locale.ENGLISH),
                                 level.intLevel()));
@@ -183,7 +185,9 @@ public class LoggersResource extends RestResource {
 
         final Subsystem subsystem = SUBSYSTEMS.get(subsystemTitle);
         final Level newLevel = Level.toLevel(level.toUpperCase(Locale.ENGLISH));
-        setLoggerLevel(subsystem.getCategory(), newLevel);
+        for (String category: subsystem.getCategories()) {
+            setLoggerLevel(category, newLevel);
+        }
 
         LOG.debug("Successfully set log level for subsystem \"{}\" to \"{}\"", subsystem.getTitle(), newLevel);
     }
@@ -213,6 +217,7 @@ public class LoggersResource extends RestResource {
     })
     @Path("/messages/recent")
     @Produces(MediaType.APPLICATION_JSON)
+    @RequiresPermissions(RestPermissions.LOGGERSMESSAGES_READ)
     public LogMessagesSummary messages(@ApiParam(name = "limit", value = "How many log messages should be returned", defaultValue = "500", allowableValues = "range[0, infinity]")
                                        @QueryParam("limit") @DefaultValue("500") @Min(0L) int limit,
                                        @ApiParam(name = "level", value = "Which log level (or higher) should the messages have", defaultValue = "ALL", allowableValues = "[OFF, FATAL, ERROR, WARN, INFO, DEBUG, TRACE, ALL]")
@@ -267,12 +272,18 @@ public class LoggersResource extends RestResource {
 
     private static class Subsystem {
         private final String title;
-        private final String category;
+        private final List<String> categories;
         private final String description;
 
         public Subsystem(String title, String category, String description) {
             this.title = title;
-            this.category = category;
+            this.categories = ImmutableList.of(category);
+            this.description = description;
+        }
+
+        public Subsystem(String title, List<String> categories, String description) {
+            this.title = title;
+            this.categories = ImmutableList.copyOf(categories);
             this.description = description;
         }
 
@@ -280,8 +291,8 @@ public class LoggersResource extends RestResource {
             return title;
         }
 
-        private String getCategory() {
-            return category;
+        private List<String> getCategories() {
+            return categories;
         }
 
         private String getDescription() {

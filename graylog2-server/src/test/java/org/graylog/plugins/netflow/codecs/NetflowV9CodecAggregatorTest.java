@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.netflow.codecs;
 
@@ -27,6 +27,7 @@ import io.netty.buffer.Unpooled;
 import io.pkts.Pcap;
 import io.pkts.packet.UDPPacket;
 import io.pkts.protocol.Protocol;
+import org.graylog.plugins.netflow.flows.NetFlowFormatter;
 import org.graylog.plugins.netflow.v9.NetFlowV9BaseRecord;
 import org.graylog.plugins.netflow.v9.NetFlowV9FieldDef;
 import org.graylog.plugins.netflow.v9.NetFlowV9FieldType;
@@ -51,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -127,7 +129,7 @@ public class NetflowV9CodecAggregatorTest {
                         ).build()
                 )
         );
-        assertThat(allRecords).hasSize(19)
+        assertThat(allRecords).hasSize(22)
                 .contains(
                         NetFlowV9Record.create(
                                 ImmutableMap.<String, Object>builder()
@@ -402,6 +404,83 @@ public class NetflowV9CodecAggregatorTest {
                 )
         );
         assertThat(allRecords).hasSize(16);
+    }
+
+    @Test
+    public void pcap_cisco_asa_NetFlowV9() throws Exception {
+        final List<NetFlowV9BaseRecord> allRecords = new ArrayList<>();
+        final List<NetFlowV9Template> allTemplates = new ArrayList<>();
+
+        final Collection<NetFlowV9Packet> packets = parseNetflowPcapStream("netflow-data/cisco-asa-netflowv9.pcap");
+        packets.forEach(packet -> {
+            List<NetFlowV9BaseRecord> recs = packet.records();
+            allRecords.addAll(packet.records());
+            allTemplates.addAll(packet.templates());
+        });
+        assertThat(allRecords).hasSize(139);
+        //TODO figure out why no templates are returned, although everything seems to work.
+        // assertThat(allTemplates).hasSize(2);
+    }
+
+    @Test
+    public void pcap_cisco_asa_NetFlowV9_toMessage() throws Exception {
+        final List<NetFlowV9BaseRecord> allRecords = new ArrayList<>();
+        final List<NetFlowV9Template> allTemplates = new ArrayList<>();
+
+        final Collection<NetFlowV9Packet> packets = parseNetflowPcapStream("netflow-data/cisco-asa-netflowv9.pcap");
+        final Collection<Message> messages = new ArrayList<>();
+        packets.forEach(packet -> {
+            messages.addAll(packet.records().stream().map(record -> NetFlowFormatter.toMessage(packet.header(), record, null)).collect(Collectors.toList()));
+        });
+        assertThat(messages).hasSize(139);
+        assertThat(messages).filteredOn(message ->
+                message.hasField("nf_conn_id") && message.getField("nf_conn_id").equals(4734215L) &&
+                message.getField("message").equals("NetFlowV9 [10.4.10.91]:49274 <> [10.4.11.101]:53 proto:17 pkts:0 bytes:41")
+        ).hasSize(2);
+    }
+
+    @Test
+    public void pcap_fortinet_NetFlowV9() throws Exception {
+        final List<NetFlowV9BaseRecord> allRecords = new ArrayList<>();
+        final List<NetFlowV9Template> allTemplates = new ArrayList<>();
+
+        final Collection<NetFlowV9Packet> packets = parseNetflowPcapStream("netflow-data/fgt300d-netflow9.pcap");
+        packets.forEach(packet -> {
+            List<NetFlowV9BaseRecord> recs = packet.records();
+            allRecords.addAll(packet.records());
+            allTemplates.addAll(packet.templates());
+        });
+        assertThat(allRecords).hasSize(146);
+        assertThat(allTemplates).hasSize(12);
+
+        NetFlowV9BaseRecord foo = allRecords.iterator().next();
+        assertThat(allRecords)
+                .contains(
+                NetFlowV9Record.create(
+                        ImmutableMap.<String, Object>builder()
+                                .put("in_bytes", 371L)
+                                .put("out_bytes", 371L)
+                                .put("in_pkts", 2L)
+                                .put("out_pkts", 2L)
+                                .put("ipv4_src_addr", "98.158.128.103")
+                                .put("ipv4_dst_addr", "172.30.1.154")
+                                .put("l4_src_port", 32161)
+                                .put("l4_dst_port", 38461)
+                                .put("protocol", (short) 17)
+                                .put("field_65", 3141)
+                                .put("forwarding_status", (short) 64)
+                                .put("flow_end_reason", (short) 2)
+                                .put("input_snmp", 5)
+                                .put("output_snmp", 15)
+                                .put("first_switched", 2056606986L)
+                                .put("last_switched", 2056787066L)
+                                .put("xlate_src_addr_ipv4", "0.0.0.0")
+                                .put("xlate_dst_addr_ipv4", "139.60.168.65")
+                                .put("xlate_src_port", 0)
+                                .put("xlate_dst_port", 38461)
+                                .build())
+                );
+
     }
 
     @Test

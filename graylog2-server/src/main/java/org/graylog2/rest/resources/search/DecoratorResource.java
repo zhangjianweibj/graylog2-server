@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.search;
 
@@ -33,6 +33,8 @@ import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
 
 import javax.inject.Inject;
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -64,8 +66,7 @@ public class DecoratorResource extends RestResource {
 
     @GET
     @Timed
-    @ApiOperation(value = "Returns all configured message decorations",
-        notes = "")
+    @ApiOperation(value = "Returns all configured message decorations")
     public List<Decorator> get() {
         checkPermission(RestPermissions.DECORATORS_READ);
         return this.decoratorService.findAll();
@@ -91,7 +92,7 @@ public class DecoratorResource extends RestResource {
     @Timed
     @ApiOperation(value = "Creates a message decoration configuration")
     @AuditEvent(type = AuditEventTypes.MESSAGE_DECORATOR_CREATE)
-    public Decorator create(@ApiParam(name = "JSON body", required = true) DecoratorImpl decorator) {
+    public Decorator create(@ApiParam(name = "JSON body", required = true) @Valid @NotNull DecoratorImpl decorator) {
         checkPermission(RestPermissions.DECORATORS_CREATE);
         if (decorator.stream().isPresent()) {
             checkPermission(RestPermissions.STREAMS_EDIT, decorator.stream().get());
@@ -119,8 +120,10 @@ public class DecoratorResource extends RestResource {
     @Timed
     @ApiOperation(value = "Update a decorator")
     @AuditEvent(type = AuditEventTypes.MESSAGE_DECORATOR_UPDATE)
-    public Decorator update(@ApiParam(name = "decorator id", required = true) @PathParam("decoratorId") final String decoratorId,
-                            @ApiParam(name = "JSON body", required = true) DecoratorImpl decorator) throws NotFoundException {
+    public Decorator update(@ApiParam(name = "decorator id", required = true)
+                            @PathParam("decoratorId") final String decoratorId,
+                            @ApiParam(name = "JSON body", required = true)
+                            @Valid @NotNull DecoratorImpl decorator) throws NotFoundException {
         final Decorator originalDecorator = decoratorService.findById(decoratorId);
         checkPermission(RestPermissions.DECORATORS_CREATE);
         if (originalDecorator.stream().isPresent()) {

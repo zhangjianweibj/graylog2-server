@@ -1,12 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert, Row, Col } from 'react-bootstrap';
+import naturalSort from 'javascript-natural-sort';
+
+import { Alert, Row, Col } from 'components/graylog';
 import { Input } from 'components/bootstrap';
 import { Spinner } from 'components/common';
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
-import naturalSort from 'javascript-natural-sort';
-
 import CombinedProvider from 'injection/CombinedProvider';
+
 const { StreamsStore } = CombinedProvider.get('Streams');
 
 class IndexSetDeletionForm extends React.Component {
@@ -19,6 +36,8 @@ class IndexSetDeletionForm extends React.Component {
     assignedStreams: undefined,
     deleteIndices: true,
   };
+
+  forms = {};
 
   _onModalOpen = () => {
     StreamsStore.load((streams) => {
@@ -39,11 +58,11 @@ class IndexSetDeletionForm extends React.Component {
   };
 
   open = () => {
-    this.refs[`index-set-deletion-modal-${this.props.indexSet.id}`].open();
+    this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`].open();
   };
 
   close = () => {
-    this.refs[`index-set-deletion-modal-${this.props.indexSet.id}`].close();
+    this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`].close();
   };
 
   _isLoading = () => {
@@ -74,7 +93,7 @@ class IndexSetDeletionForm extends React.Component {
     if (!this._isDeletable()) {
       const assignedStreams = this.state.assignedStreams
         .sort((s1, s2) => naturalSort(s1.title, s2.title))
-        .map(stream => <li key={`stream-id-${stream.id}`}>{stream.title}</li>);
+        .map((stream) => <li key={`stream-id-${stream.id}`}>{stream.title}</li>);
 
       return (
         <div>
@@ -121,7 +140,7 @@ class IndexSetDeletionForm extends React.Component {
 
   render() {
     return (
-      <BootstrapModalForm ref={`index-set-deletion-modal-${this.props.indexSet.id}`}
+      <BootstrapModalForm ref={(elem) => { this.forms[`index-set-deletion-modal-${this.props.indexSet.id}`] = elem; }}
                           title={`Delete index set "${this.props.indexSet.title}"?`}
                           onModalOpen={this._onModalOpen}
                           onSubmitForm={this._onDelete}

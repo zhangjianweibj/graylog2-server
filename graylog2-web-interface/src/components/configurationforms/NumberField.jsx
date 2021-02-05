@@ -1,9 +1,26 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import FieldHelpers from './FieldHelpers';
 
 import FormsUtils from 'util/FormsUtils';
+
+import FieldHelpers from './FieldHelpers';
 
 const NumberField = createReactClass({
   displayName: 'NumberField',
@@ -35,6 +52,7 @@ const NumberField = createReactClass({
 
   validationSpec(field) {
     const validationAttributes = field.attributes.map(this.mapValidationAttribute);
+
     if (validationAttributes.length > 0) {
       // The server may return more than one validation attribute, but it doesn't make sense to use more
       // than one validation for a number field, so we return the first one
@@ -46,12 +64,13 @@ const NumberField = createReactClass({
 
   handleChange(evt) {
     const numericValue = FormsUtils.getValueFromInput(evt.target);
+
     this.props.onChange(this.props.title, numericValue);
   },
 
   render() {
-    const typeName = this.props.typeName;
-    const field = this.props.field;
+    const { typeName } = this.props;
+    const { field } = this.props;
     const isRequired = !field.is_optional;
     const validationSpecs = this.validationSpec(field);
 
@@ -63,9 +82,14 @@ const NumberField = createReactClass({
           {FieldHelpers.optionalMarker(field)}
         </label>
 
-        <input id={field.title} type="number" required={isRequired} onChange={this.handleChange}
-               value={this.props.value} className="input-xlarge validatable form-control"
-          {...validationSpecs} autoFocus={this.props.autoFocus} />
+        <input id={field.title}
+               type="number"
+               required={isRequired}
+               onChange={this.handleChange}
+               value={this.props.value}
+               className="input-xlarge validatable form-control"
+               {...validationSpecs}
+               autoFocus={this.props.autoFocus} />
 
         <p className="help-block">{field.description}</p>
       </div>

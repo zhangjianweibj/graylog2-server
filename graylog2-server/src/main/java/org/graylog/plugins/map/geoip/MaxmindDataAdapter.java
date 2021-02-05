@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.map.geoip;
 
@@ -24,11 +24,13 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.auto.value.AutoValue;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
 import com.google.common.net.InetAddresses;
 import com.google.inject.assistedinject.Assisted;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.AddressNotFoundException;
+import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.model.CountryResponse;
 import com.maxmind.geoip2.record.Country;
@@ -40,13 +42,13 @@ import org.graylog2.plugin.lookup.LookupDataAdapter;
 import org.graylog2.plugin.lookup.LookupDataAdapterConfiguration;
 import org.graylog2.plugin.lookup.LookupResult;
 import org.graylog2.plugin.utilities.FileInfo;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.IOException;
@@ -69,7 +71,7 @@ public class MaxmindDataAdapter extends LookupDataAdapter {
     public static final String NAME = "maxmind_geoip";
     private final Config config;
     private final AtomicReference<DatabaseReader> databaseReader = new AtomicReference<>();
-    private FileInfo fileInfo;
+    private FileInfo fileInfo = FileInfo.empty();
 
     @Inject
     protected MaxmindDataAdapter(@Assisted("id") String id,
@@ -222,6 +224,25 @@ public class MaxmindDataAdapter extends LookupDataAdapter {
                     return LookupResult.empty();
                 } catch (Exception e) {
                     LOG.warn("Unable to look up country data for IP address {}, returning empty result.", addr, e);
+                    return LookupResult.empty();
+                }
+            case MAXMIND_ASN:
+                try {
+                    final AsnResponse asn = reader.asn(addr);
+                    if (asn == null) {
+                        LOG.debug("No ASN data for IP address {}, returning empty result.", addr);
+                        return LookupResult.empty();
+                    }
+                    final ImmutableMap<Object, Object> map = ImmutableMap.of(
+                            "as_number", asn.getAutonomousSystemNumber(),
+                            "as_organization", asn.getAutonomousSystemOrganization()
+                    );
+                    return LookupResult.multi(asn.getAutonomousSystemNumber(), map);
+                } catch (AddressNotFoundException nfe) {
+                    LOG.debug("Unable to look up ASN data for IP address {}, returning empty result.", addr, nfe);
+                    return LookupResult.empty();
+                } catch (Exception e) {
+                    LOG.warn("Unable to look up ASN data for IP address {}, returning empty result.", addr, e);
                     return LookupResult.empty();
                 }
         }

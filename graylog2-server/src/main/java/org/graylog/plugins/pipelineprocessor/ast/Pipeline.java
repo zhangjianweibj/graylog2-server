@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.ast;
 
@@ -52,6 +52,7 @@ public abstract class Pipeline {
         return toBuilder().id(id).build();
     }
 
+    @Override
     @Memoized
     public abstract int hashCode();
 
@@ -97,10 +98,8 @@ public abstract class Pipeline {
         public abstract Builder stages(SortedSet<Stage> stages);
     }
 
+    @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("Pipeline ");
-        sb.append("'").append(name()).append("'");
-        sb.append(" (").append(id()).append(")");
-        return sb.toString();
+        return "Pipeline '" + name() + "' (" + id() + ")";
     }
 }

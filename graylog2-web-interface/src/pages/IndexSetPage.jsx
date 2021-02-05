@@ -1,25 +1,39 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Alert, Button, Row, Col, Panel } from 'react-bootstrap';
 import numeral from 'numeral';
 
-import { DocumentTitle, PageHeader, Spinner } from 'components/common';
+import { LinkContainer } from 'components/graylog/router';
+import { Alert, Row, Col, Panel, Button } from 'components/graylog';
+import { DocumentTitle, PageHeader, Spinner, Icon } from 'components/common';
 import { IndicesMaintenanceDropdown, IndicesOverview, IndexSetDetails } from 'components/indices';
 import { IndexerClusterHealthSummary } from 'components/indexers';
 import { DocumentationLink } from 'components/support';
-
 import DocsHelper from 'util/DocsHelper';
-
 import CombinedProvider from 'injection/CombinedProvider';
+import Routes from 'routing/Routes';
+import withParams from 'routing/withParams';
 
 const { IndexSetsStore, IndexSetsActions } = CombinedProvider.get('IndexSets');
 const { IndicesStore, IndicesActions } = CombinedProvider.get('Indices');
 const { IndexerOverviewStore, IndexerOverviewActions } = CombinedProvider.get('IndexerOverview');
-
-import Routes from 'routing/Routes';
 
 const IndexSetPage = createReactClass({
   displayName: 'IndexSetPage',
@@ -68,11 +82,12 @@ const IndexSetPage = createReactClass({
         <Col md={8} mdOffset={2}>
           <div className="top-margin">
             <Panel bsStyle="danger"
-                   header={<span><i className="fa fa-exclamation-triangle" /> Indices overview unavailable</span>}>
+                   header={<span><Icon name="exclamation-triangle" /> Indices overview unavailable</span>}>
               <p>
                 We could not get the indices overview information. This usually means there was a problem
                 connecting to Elasticsearch, and <strong>you should ensure Elasticsearch is up and reachable from
-                Graylog</strong>.
+                  Graylog
+                                                 </strong>.
               </p>
               <p>
                 Graylog will continue storing your messages in its journal, but you will not be able to search on them
@@ -94,7 +109,7 @@ const IndexSetPage = createReactClass({
       return <Spinner />;
     }
 
-    const indexSet = this.state.indexSet;
+    const { indexSet } = this.state;
 
     const pageHeader = (
       <PageHeader title={`Index Set: ${indexSet.title}`}>
@@ -133,19 +148,21 @@ const IndexSetPage = createReactClass({
 
     let indicesInfo;
     let indicesOverview;
+
     if (this.state.indexerOverview && this.state.indexDetails.closedIndices) {
       const deflectorInfo = this.state.indexerOverview.deflector;
 
       indicesInfo = (
         <span>
           <Alert bsStyle="success" style={{ marginTop: '10' }}>
-            <i className="fa fa-th" /> &nbsp;{this._totalIndexCount()} indices with a total of{' '}
+            <Icon name="th" /> &nbsp;{this._totalIndexCount()} indices with a total of{' '}
             {numeral(this.state.indexerOverview.counts.events).format('0,0')} messages under management,
             current write-active index is <i>{deflectorInfo.current_target}</i>.
           </Alert>
           <IndexerClusterHealthSummary health={this.state.indexerOverview.indexer_cluster.health} />
         </span>
       );
+
       indicesOverview = (
         <IndicesOverview indices={this.state.indexerOverview.indices}
                          indexDetails={this.state.indexDetails.indices}
@@ -182,4 +199,4 @@ const IndexSetPage = createReactClass({
   },
 });
 
-export default IndexSetPage;
+export default withParams(IndexSetPage);

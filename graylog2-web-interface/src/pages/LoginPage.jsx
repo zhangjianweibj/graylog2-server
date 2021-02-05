@@ -1,119 +1,100 @@
-import React from 'react';
-import createReactClass from 'create-react-class';
-import Reflux from 'reflux';
-import { Row, Button, FormGroup, Alert } from 'react-bootstrap';
-import { DocumentTitle } from 'components/common';
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
+import React, { useEffect, useState } from 'react';
+import { PluginStore } from 'graylog-web-plugin/plugin';
+import { createGlobalStyle } from 'styled-components';
 
-import { Input } from 'components/bootstrap';
+import { DocumentTitle, Icon } from 'components/common';
+import { Alert } from 'components/graylog';
+import LoginForm from 'components/login/LoginForm';
+import LoginBox from 'components/login/LoginBox';
+import authStyles from 'theme/styles/authStyles';
+import CombinedProvider from 'injection/CombinedProvider';
+
 import LoadingPage from './LoadingPage';
 
-import StoreProvider from 'injection/StoreProvider';
-const SessionStore = StoreProvider.getStore('Session');
-import ActionsProvider from 'injection/ActionsProvider';
-const SessionActions = ActionsProvider.getActions('Session');
+const { SessionActions } = CombinedProvider.get('Session');
 
-import disconnectedStyle from '!style/useable!css!less!stylesheets/disconnected.less';
-import authStyle from '!style/useable!css!less!stylesheets/auth.less';
+const LoginPageStyles = createGlobalStyle`
+  ${authStyles}
+`;
 
-const LoginPage = createReactClass({
-  displayName: 'LoginPage',
-  mixins: [Reflux.connect(SessionStore), Reflux.ListenerMethods],
+const LoginPage = () => {
+  const [didValidateSession, setDidValidateSession] = useState(false);
+  const [lastError, setLastError] = useState(undefined);
 
-  getInitialState() {
-    return {
-      loading: false,
+  useEffect(() => {
+    const sessionPromise = SessionActions.validate().then((response) => {
+      setDidValidateSession(true);
+
+      return response;
+    });
+
+    return () => {
+      sessionPromise.cancel();
     };
-  },
+  }, []);
 
-  componentDidMount() {
-    disconnectedStyle.use();
-    authStyle.use();
-    SessionActions.validate();
-  },
+  const resetLastError = () => {
+    setLastError(undefined);
+  };
 
-  componentWillUnmount() {
-    disconnectedStyle.unuse();
-    authStyle.unuse();
-    if (this.promise) {
-      this.promise.cancel();
-    }
-  },
-
-  onSignInClicked(event) {
-    event.preventDefault();
-    this.resetLastError();
-    this.setState({ loading: true });
-    const username = this.refs.username.getValue();
-    const password = this.refs.password.getValue();
-    const location = document.location.host;
-    this.promise = SessionActions.login.triggerPromise(username, password, location);
-    this.promise.catch((error) => {
-      if (error.additional.status === 401) {
-        this.setState({ lastError: 'Invalid credentials, please verify them and retry.' });
-      } else {
-        this.setState({ lastError: `Error - the server returned: ${error.additional.status} - ${error.message}` });
-      }
-    });
-    this.promise.finally(() => {
-      if (!this.promise.isCancelled()) {
-        this.setState({ loading: false });
-      }
-    });
-  },
-
-  formatLastError(error) {
-    if (error) {
+  const formatLastError = () => {
+    if (lastError) {
       return (
         <div className="form-group">
           <Alert bsStyle="danger">
-            <a className="close" onClick={this.resetLastError}>×</a>{error}
+            <button type="button" className="close" onClick={resetLastError}>&times;</button>{lastError}
           </Alert>
         </div>
       );
     }
+
     return null;
-  },
+  };
 
-  resetLastError() {
-    this.setState({ lastError: undefined });
-  },
+  const renderLoginForm = () => {
+    const loginComponent = PluginStore.exports('loginProviderType');
 
-  render() {
-    if (this.state.validatingSession) {
-      return (
-        <LoadingPage />
-      );
+    if (loginComponent.length === 1) {
+      return React.createElement(loginComponent[0].formComponent, {
+        onErrorChange: setLastError,
+      });
     }
 
-    const alert = this.formatLastError(this.state.lastError);
+    return <LoginForm onErrorChange={setLastError} />;
+  };
+
+  if (!didValidateSession) {
     return (
-      <DocumentTitle title="Sign in">
-        <div>
-          <div className="container" id="login-box">
-            <Row>
-              <form className="col-md-4 col-md-offset-4 well" id="login-box-content" onSubmit={this.onSignInClicked}>
-                <legend><i className="fa fa-group" /> Welcome to Graylog</legend>
-
-                {alert}
-
-                <Input ref="username" id="username" type="text" placeholder="Username" autoFocus />
-
-                <Input ref="password" id="password" type="password" placeholder="Password" />
-
-                <FormGroup>
-                  <Button type="submit" bsStyle="info" disabled={this.state.loading}>
-                    {this.state.loading ? 'Signing in...' : 'Sign in'}
-                  </Button>
-                </FormGroup>
-
-              </form>
-            </Row>
-          </div>
-        </div>
-      </DocumentTitle>
+      <LoadingPage />
     );
-  },
-});
+  }
+
+  return (
+    <DocumentTitle title="Sign in">
+      <LoginBox>
+        <legend><Icon name="users" /> Welcome to Graylog</legend>
+        <LoginPageStyles />
+        {formatLastError()}
+        {renderLoginForm()}
+      </LoginBox>
+    </DocumentTitle>
+  );
+};
 
 export default LoginPage;
-

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.bootstrap;
 
@@ -90,6 +90,19 @@ public abstract class ServerBootstrap extends CmdLineTool {
         // Do not use a PID file if the user requested not to
         if (!isNoPidFile()) {
             savePidFile(getPidFile());
+        }
+        // Set these early in the startup because netty's NativeLibraryUtil uses a static initializer
+        setNettyNativeDefaults();
+    }
+
+    private void setNettyNativeDefaults() {
+        // Give netty a better spot than /tmp to unpack its tcnative libraries
+        if (System.getProperty("io.netty.native.workdir") == null) {
+            System.setProperty("io.netty.native.workdir", configuration.getNativeLibDir().toAbsolutePath().toString());
+        }
+        // Don't delete the native lib after unpacking, as this confuses needrestart(1) on some distributions
+        if (System.getProperty("io.netty.native.deleteLibAfterLoading") == null) {
+            System.setProperty("io.netty.native.deleteLibAfterLoading", "false");
         }
     }
 
@@ -198,7 +211,7 @@ public abstract class ServerBootstrap extends CmdLineTool {
         result.add(new SharedPeriodicalBindings());
         result.add(new SchedulerBindings());
         result.add(new GenericInitializerBindings());
-        result.add(new SystemStatsModule(configuration.isDisableSigar()));
+        result.add(new SystemStatsModule(configuration.isDisableNativeSystemStatsCollector()));
 
         return result;
     }

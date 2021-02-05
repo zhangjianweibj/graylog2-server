@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.processors;
 
@@ -36,8 +36,10 @@ import org.graylog.plugins.pipelineprocessor.ast.Rule;
 import org.graylog.plugins.pipelineprocessor.ast.Stage;
 import org.graylog.plugins.pipelineprocessor.ast.statements.Statement;
 import org.graylog.plugins.pipelineprocessor.codegen.GeneratedRule;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigDto;
 import org.graylog.plugins.pipelineprocessor.processors.listeners.InterpreterListener;
 import org.graylog.plugins.pipelineprocessor.processors.listeners.NoopInterpreterListener;
+import org.graylog.plugins.pipelineprocessor.processors.listeners.RuleMetricsListener;
 import org.graylog2.metrics.CacheStatsSet;
 import org.graylog2.plugin.Message;
 import org.graylog2.plugin.MessageCollection;
@@ -53,7 +55,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.ArrayList;
@@ -70,11 +71,10 @@ import static org.jooq.lambda.tuple.Tuple.tuple;
 public class PipelineInterpreter implements MessageProcessor {
     private static final Logger log = LoggerFactory.getLogger(PipelineInterpreter.class);
 
-    public static final String GL2_PROCESSING_ERROR = "gl2_processing_error";
-
     private final Journal journal;
     private final Meter filteredOutMessages;
     private final Timer executionTime;
+    private final MetricRegistry metricRegistry;
     private final ConfigurationStateUpdater stateUpdater;
 
     @Inject
@@ -85,6 +85,7 @@ public class PipelineInterpreter implements MessageProcessor {
         this.journal = journal;
         this.filteredOutMessages = metricRegistry.meter(name(ProcessBufferProcessor.class, "filteredOutMessages"));
         this.executionTime = metricRegistry.timer(name(PipelineInterpreter.class, "executionTime"));
+        this.metricRegistry = metricRegistry;
         this.stateUpdater = stateUpdater;
     }
 
@@ -96,6 +97,9 @@ public class PipelineInterpreter implements MessageProcessor {
     public Messages process(Messages messages) {
         try (Timer.Context ignored = executionTime.time()) {
             final State latestState = stateUpdater.getLatestState();
+            if (latestState.enableRuleMetrics()) {
+                return process(messages, new RuleMetricsListener(metricRegistry), latestState);
+            }
             return process(messages, new NoopInterpreterListener(), latestState);
         }
     }
@@ -343,31 +347,35 @@ public class PipelineInterpreter implements MessageProcessor {
                                        InterpreterListener interpreterListener) {
         rule.markExecution();
         interpreterListener.executeRule(rule, pipeline);
-        log.debug("[{}] rule `{}` matched running actions", msgId, rule.name());
-        final GeneratedRule generatedRule = rule.generatedRule();
-        if (generatedRule != null) {
-            try {
-                generatedRule.then(context);
-                return true;
-            } catch (Exception ignored) {
-                final EvaluationContext.EvalError lastError = Iterables.getLast(context.evaluationErrors());
-                appendProcessingError(rule, message, lastError.toString());
-                log.debug("Encountered evaluation error, skipping rest of the rule: {}", lastError);
-                rule.markFailure();
-                return false;
-            }
-        } else {
-            if (ConfigurationStateUpdater.isAllowCodeGeneration()) {
-                throw new IllegalStateException("Should have generated code and not interpreted the tree");
-            }
-            for (Statement statement : rule.then()) {
-                if (!evaluateStatement(message, interpreterListener, pipeline, context, rule, statement)) {
-                    // statement raised an error, skip the rest of the rule
+        try {
+            log.debug("[{}] rule `{}` matched running actions", msgId, rule.name());
+            final GeneratedRule generatedRule = rule.generatedRule();
+            if (generatedRule != null) {
+                try {
+                    generatedRule.then(context);
+                    return true;
+                } catch (Exception ignored) {
+                    final EvaluationContext.EvalError lastError = Iterables.getLast(context.evaluationErrors());
+                    appendProcessingError(rule, message, lastError.toString());
+                    log.debug("Encountered evaluation error, skipping rest of the rule: {}", lastError);
+                    rule.markFailure();
                     return false;
                 }
+            } else {
+                if (ConfigurationStateUpdater.isAllowCodeGeneration()) {
+                    throw new IllegalStateException("Should have generated code and not interpreted the tree");
+                }
+                for (Statement statement : rule.then()) {
+                    if (!evaluateStatement(message, interpreterListener, pipeline, context, rule, statement)) {
+                        // statement raised an error, skip the rest of the rule
+                        return false;
+                    }
+                }
             }
+            return true;
+        } finally {
+            interpreterListener.finishExecuteRule(rule, pipeline);
         }
-        return true;
     }
 
     private boolean evaluateStatement(Message message,
@@ -422,10 +430,10 @@ public class PipelineInterpreter implements MessageProcessor {
 
     private void appendProcessingError(Rule rule, Message message, String errorString) {
         final String msg = "For rule '" + rule.name() + "': " + errorString;
-        if (message.hasField(GL2_PROCESSING_ERROR)) {
-            message.addField(GL2_PROCESSING_ERROR, message.getFieldAs(String.class, GL2_PROCESSING_ERROR) + "," + msg);
+        if (message.hasField(Message.FIELD_GL2_PROCESSING_ERROR)) {
+            message.addField(Message.FIELD_GL2_PROCESSING_ERROR, message.getFieldAs(String.class, Message.FIELD_GL2_PROCESSING_ERROR) + "," + msg);
         } else {
-            message.addField(GL2_PROCESSING_ERROR, msg);
+            message.addField(Message.FIELD_GL2_PROCESSING_ERROR, msg);
         }
     }
 
@@ -448,16 +456,19 @@ public class PipelineInterpreter implements MessageProcessor {
         private final ImmutableSetMultimap<String, Pipeline> streamPipelineConnections;
         private final LoadingCache<Set<Pipeline>, StageIterator.Configuration> cache;
         private final boolean cachedIterators;
+        private final RuleMetricsConfigDto ruleMetricsConfig;
 
         @AssistedInject
         public State(@Assisted ImmutableMap<String, Pipeline> currentPipelines,
                      @Assisted ImmutableSetMultimap<String, Pipeline> streamPipelineConnections,
+                     @Assisted RuleMetricsConfigDto ruleMetricsConfig,
                      MetricRegistry metricRegistry,
                      @Named("processbuffer_processors") int processorCount,
                      @Named("cached_stageiterators") boolean cachedIterators) {
             this.currentPipelines = currentPipelines;
             this.streamPipelineConnections = streamPipelineConnections;
             this.cachedIterators = cachedIterators;
+            this.ruleMetricsConfig = ruleMetricsConfig;
 
             cache = CacheBuilder.newBuilder()
                     .concurrencyLevel(processorCount)
@@ -482,6 +493,10 @@ public class PipelineInterpreter implements MessageProcessor {
             return streamPipelineConnections;
         }
 
+        public boolean enableRuleMetrics() {
+            return ruleMetricsConfig.metricsEnabled();
+        }
+
         public StageIterator getStageIterator(Set<Pipeline> pipelines) {
             try {
                 if (cachedIterators) {
@@ -498,7 +513,8 @@ public class PipelineInterpreter implements MessageProcessor {
 
         public interface Factory {
             State newState(ImmutableMap<String, Pipeline> currentPipelines,
-                           ImmutableSetMultimap<String, Pipeline> streamPipelineConnections);
+                           ImmutableSetMultimap<String, Pipeline> streamPipelineConnections,
+                           RuleMetricsConfigDto ruleMetricsConfig);
         }
     }
 }

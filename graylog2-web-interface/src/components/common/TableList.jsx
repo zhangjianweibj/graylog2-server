@@ -1,12 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import Immutable from 'immutable';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import lodash from 'lodash';
-import { Col, Row } from 'react-bootstrap';
 
+import { Col, Row } from 'components/graylog';
 import { Input } from 'components/bootstrap';
-import { ControlledTableList, TypeAheadDataFilter } from 'components/common';
+import ControlledTableList from 'components/common/ControlledTableList';
+import TypeAheadDataFilter from 'components/common/TypeAheadDataFilter';
 
 import style from './TableList.css';
 
@@ -85,6 +102,7 @@ class TableList extends React.Component {
 
   componentDidUpdate(prevProps) {
     const { filteredItems, selected } = this.state;
+
     this._setSelectAllCheckboxState(this.selectAllInput, filteredItems, selected);
 
     if (!this.props.items.equals(prevProps.items)) {
@@ -98,20 +116,24 @@ class TableList extends React.Component {
   }
 
   _recalculateSelection = (selected, nextFilteredItems) => {
-    const nextFilteredIds = Immutable.Set(nextFilteredItems.map(item => item[this.props.idKey]));
+    const nextFilteredIds = Immutable.Set(nextFilteredItems.map((item) => item[this.props.idKey]));
+
     return selected.intersect(nextFilteredIds);
   };
 
   _updateFilteredItems = (nextFilteredItems) => {
     const filteredSelected = this._recalculateSelection(this.state.selected, nextFilteredItems);
+
     this.setState({ filteredItems: nextFilteredItems, selected: filteredSelected });
   };
 
   _setSelectAllCheckboxState = (selectAllInput, filteredItems, selected) => {
     const selectAllCheckbox = selectAllInput ? selectAllInput.getInputDOMNode() : undefined;
+
     if (!selectAllCheckbox) {
       return;
     }
+
     // Set the select all checkbox as indeterminate if some but not items are selected.
     selectAllCheckbox.indeterminate = selected.count() > 0 && !this._isAllSelected(filteredItems, selected);
   };
@@ -134,11 +156,12 @@ class TableList extends React.Component {
 
     return (
       <ControlledTableList.Header>
-        {selectedItems > 0 &&
+        {selectedItems > 0
+        && (
         <div className={style.headerComponentsWrapper}>
           {this.props.bulkActionsFactory(selected)}
         </div>
-        }
+        )}
         <Input ref={(c) => { this.selectAllInput = c; }}
                id="select-all-checkbox"
                type="checkbox"
@@ -152,7 +175,8 @@ class TableList extends React.Component {
   };
 
   _toggleSelectAll = (event) => {
-    const newSelected = event.target.checked ? Immutable.Set(this.state.filteredItems.map(item => item[this.props.idKey])) : Immutable.Set();
+    const newSelected = event.target.checked ? Immutable.Set(this.state.filteredItems.map((item) => item[this.props.idKey])) : Immutable.Set();
+
     this.setState({ selected: newSelected });
   };
 
@@ -189,12 +213,14 @@ class TableList extends React.Component {
   _onItemSelect = (id) => {
     return (event) => {
       const newSelected = event.target.checked ? this.state.selected.add(id) : this.state.selected.delete(id);
+
       this.setState({ selected: newSelected });
     };
   };
 
   render() {
     let filter;
+
     if (this.props.enableFilter) {
       filter = (
         <Row>
@@ -223,7 +249,7 @@ class TableList extends React.Component {
         <ControlledTableList.Item>No items match your filter criteria</ControlledTableList.Item>
       );
     } else {
-      formattedItems = this.state.filteredItems.map(item => this._formatItem(item)).toJS();
+      formattedItems = this.state.filteredItems.map((item) => this._formatItem(item)).toJS();
     }
 
     return (

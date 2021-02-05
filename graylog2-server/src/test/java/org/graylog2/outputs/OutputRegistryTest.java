@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.outputs;
 
@@ -80,13 +80,13 @@ public class OutputRegistryTest {
         when(outputService.load(eq(outputId))).thenReturn(output);
 
         final OutputRegistry outputRegistry = new OutputRegistry(null, outputService, messageOutputFactory, null, null, FAULT_COUNT_THRESHOLD, FAULT_PENALTY_SECONDS);
-        assertEquals(outputRegistry.getRunningMessageOutputs().size(), 0);
+        assertEquals(0, outputRegistry.getRunningMessageOutputs().size());
 
         MessageOutput result = outputRegistry.getOutputForIdAndStream(outputId, stream);
 
         assertSame(result, messageOutput);
         assertNotNull(outputRegistry.getRunningMessageOutputs());
-        assertEquals(outputRegistry.getRunningMessageOutputs().size(), 1);
+        assertEquals(1, outputRegistry.getRunningMessageOutputs().size());
     }
 
     @Test
@@ -100,7 +100,7 @@ public class OutputRegistryTest {
         MessageOutput messageOutput = outputRegistry.getOutputForIdAndStream(outputId, stream);
 
         assertNull(messageOutput);
-        assertEquals(outputRegistry.getRunningMessageOutputs().size(), 0);
+        assertEquals(0, outputRegistry.getRunningMessageOutputs().size());
     }
 
     @Test
@@ -111,11 +111,11 @@ public class OutputRegistryTest {
         when(outputService.load(eq(outputId))).thenReturn(output);
 
         final OutputRegistry outputRegistry = new OutputRegistry(null, outputService, messageOutputFactory, null, null, FAULT_COUNT_THRESHOLD, FAULT_PENALTY_SECONDS);
-        assertEquals(outputRegistry.getRunningMessageOutputs().size(), 0);
+        assertEquals(0, outputRegistry.getRunningMessageOutputs().size());
 
         MessageOutput result = outputRegistry.getOutputForIdAndStream(outputId, stream);
 
         assertNull(result);
-        assertEquals(outputRegistry.getRunningMessageOutputs().size(), 0);
+        assertEquals(0, outputRegistry.getRunningMessageOutputs().size());
     }
 }

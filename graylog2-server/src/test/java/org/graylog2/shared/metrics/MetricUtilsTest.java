@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.metrics;
 
@@ -30,9 +30,9 @@ import org.junit.Test;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class MetricUtilsTest {
@@ -58,12 +58,20 @@ public class MetricUtilsTest {
             fail("Should not have thrown: " + e.getMessage());
         }
 
-        try {
-            //noinspection unused
-            final Counter somename = MetricUtils.safelyRegister(metricRegistry, "somename", new Counter());
-        } catch (Exception e) {
-            assertTrue("Registering a metric with a different metric type fails on using it", e instanceof ClassCastException);
-        }
+        assertThatExceptionOfType(ClassCastException.class)
+                .describedAs("Registering a metric with a different metric type fails on using it")
+                .isThrownBy(() -> MetricUtils.safelyRegister(metricRegistry, "somename", new Counter()));
+    }
+
+    @Test
+    public void getOrRegister() {
+        final MetricRegistry metricRegistry = new MetricRegistry();
+
+        final Counter newMetric1 = new Counter();
+        final Counter newMetric2 = new Counter();
+
+        assertThat(MetricUtils.getOrRegister(metricRegistry, "test1", newMetric1)).isEqualTo(newMetric1);
+        assertThat(MetricUtils.getOrRegister(metricRegistry, "test1", newMetric2)).isEqualTo(newMetric1);
     }
 
     @Test

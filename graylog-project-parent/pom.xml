@@ -1,33 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2012-2015 TORCH GmbH, 2015-2016 Graylog, Inc.
-  ~
-  ~ This file is part of Graylog.
-  ~
-  ~ Graylog is free software: you can redistribute it and/or modify
-  ~ it under the terms of the GNU General Public License as published by
-  ~ the Free Software Foundation, either version 3 of the License, or
-  ~ (at your option) any later version.
-  ~
-  ~ Graylog is distributed in the hope that it will be useful,
-  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
-  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  ~ GNU General Public License for more details.
-  ~
-  ~ You should have received a copy of the GNU General Public License
-  ~ along with Graylog.  If not, see <http://www.gnu.org/licenses />.
-  -->
+
+    Copyright (C) 2020 Graylog, Inc.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the Server Side Public License, version 1,
+    as published by MongoDB, Inc.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    Server Side Public License for more details.
+
+    You should have received a copy of the Server Side Public License
+    along with this program. If not, see
+    <http://www.mongodb.com/licensing/server-side-public-license>.
+
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <modules>
         <module>../graylog2-server</module>
-        <module>../integration-tests</module>
+        <module>../full-backend-tests</module>
     </modules>
 
     <parent>
         <groupId>org.graylog</groupId>
         <artifactId>graylog-parent</artifactId>
-        <version>3.0.0-alpha.2-SNAPSHOT</version>
+        <version>4.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>graylog-project-parent</artifactId>
@@ -107,10 +107,31 @@
                 <artifactId>java-semver</artifactId>
                 <version>${java-semver.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.graylog.repackaged</groupId>
+                <artifactId>semver4j</artifactId>
+                <version>${semver4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.cryptomator</groupId>
+                <artifactId>siv-mode</artifactId>
+                <version>${siv-mode.version}</version>
+            </dependency>
 
+            <!-- Always check mongojack dependencies to see if we need to adjust our mongodb-driver dependencies -->
             <dependency>
                 <groupId>org.mongodb</groupId>
                 <artifactId>mongodb-driver</artifactId>
+                <version>${mongodb-driver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-legacy</artifactId>
                 <version>${mongodb-driver.version}</version>
             </dependency>
             <dependency>
@@ -119,22 +140,6 @@
                 <version>${mongojack.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>org.elasticsearch</groupId>
-                <artifactId>elasticsearch</artifactId>
-                <version>${elasticsearch.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.graylog.jest</groupId>
-                <artifactId>jest</artifactId>
-                <version>${jest.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>commons-logging</groupId>
-                        <artifactId>commons-logging</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
@@ -205,7 +210,7 @@
                 <version>${javax.ws.rs-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.hibernate</groupId>
+                <groupId>org.hibernate.validator</groupId>
                 <artifactId>hibernate-validator</artifactId>
                 <version>${hibernate-validator.version}</version>
             </dependency>
@@ -331,9 +336,14 @@
             </dependency>
 
             <dependency>
-                <groupId>com.eaio.uuid</groupId>
+                <groupId>org.graylog2.repackaged</groupId>
                 <artifactId>uuid</artifactId>
                 <version>${uuid.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.huxhorn.sulky</groupId>
+                <artifactId>de.huxhorn.sulky.ulid</artifactId>
+                <version>${ulid.version}</version>
             </dependency>
 
             <dependency>
@@ -346,6 +356,12 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-email</artifactId>
                 <version>${commons-email.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-validator</groupId>
+                <artifactId>commons-validator</artifactId>
+                <version>${commons-validator.version}</version>
             </dependency>
 
             <dependency>
@@ -386,15 +402,15 @@
             </dependency>
 
             <dependency>
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>${jaxb-api.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>net.jcip</groupId>
                 <artifactId>jcip-annotations</artifactId>
                 <version>${jcip-annotations.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.github.spotbugs</groupId>
-                <artifactId>spotbugs-annotations</artifactId>
-                <version>${spotbugs-annotations.version}</version>
                 <scope>provided</scope>
             </dependency>
 
@@ -421,6 +437,11 @@
             </dependency>
             <dependency>
                 <groupId>com.google.auto.value</groupId>
+                <artifactId>auto-value-annotations</artifactId>
+                <version>${auto-value.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.auto.value</groupId>
                 <artifactId>auto-value</artifactId>
                 <version>${auto-value.version}</version>
                 <scope>provided</scope>
@@ -432,15 +453,9 @@
                 <scope>provided</scope>
             </dependency>
             <dependency>
-                <groupId>org.fusesource</groupId>
-                <artifactId>sigar</artifactId>
-                <version>${sigar.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                </exclusions>
+                <groupId>com.github.oshi</groupId>
+                <artifactId>oshi-core</artifactId>
+                <version>${oshi.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.graylog2.repackaged</groupId>
@@ -502,12 +517,44 @@
                 <artifactId>javapoet</artifactId>
                 <version>${javapoet.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.freemarker</groupId>
+                <artifactId>freemarker</artifactId>
+                <version>${freemarker.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>one.util</groupId>
+                <artifactId>streamex</artifactId>
+                <version>${streamex.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.leadinglight</groupId>
+                <artifactId>jdot</artifactId>
+                <version>${jdot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.unboundid</groupId>
+                <artifactId>unboundid-ldapsdk</artifactId>
+                <version>${unboundid-ldap.version}</version>
+            </dependency>
 
             <!-- Test dependencies -->
             <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit-jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId>
+                <version>${junit-jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -535,7 +582,13 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>com.jayway.restassured</groupId>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-junit-jupiter</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
                 <version>${restassured.version}</version>
                 <scope>test</scope>
@@ -547,7 +600,7 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>com.jayway.restassured</groupId>
+                <groupId>io.rest-assured</groupId>
                 <artifactId>json-path</artifactId>
                 <version>${restassured.version}</version>
                 <scope>test</scope>
@@ -559,27 +612,16 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>com.lordofthejars</groupId>
-                <artifactId>nosqlunit-mongodb</artifactId>
-                <version>${nosqlunit.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.github.joschi.nosqlunit</groupId>
-                <artifactId>nosqlunit-elasticsearch-http</artifactId>
-                <version>${nosqlunit-elasticsearch-http.version}</version>
-                <scope>test</scope>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.jukito</groupId>
                 <artifactId>jukito</artifactId>
                 <version>${jukito.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.github.fakemongo</groupId>
-                <artifactId>fongo</artifactId>
-                <version>${fongo.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -647,7 +689,7 @@
                 <plugin>
                     <groupId>com.mycila</groupId>
                     <artifactId>license-maven-plugin</artifactId>
-                    <version>2.11</version>
+                    <version>${license-maven.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -656,10 +698,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Use ALL the cores! -->
-                    <forkCount>1C</forkCount>
-                    <reuseForks>false</reuseForks>
-                    <argLine>-Djava.library.path=${project.basedir}/../lib/sigar-${sigar.version} -Dio.netty.leakDetectionLevel=paranoid -Djava.awt.headless=true</argLine>
+                    <forkCount>2</forkCount>
+                    <reuseForks>true</reuseForks>
+                    <argLine>-Dio.netty.leakDetectionLevel=paranoid -Djava.awt.headless=true</argLine>
                     <excludes>
                         <exclude>**/*IntegrationTest.java</exclude>
                         <exclude>**/*IT.java</exclude>
@@ -669,6 +710,23 @@
                         <include>**/*Test.class</include>
                     </includes>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <forkCount>1</forkCount>
+                    <skip>false</skip>
+                    <argLine>-Djava.awt.headless=true</argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>de.thetaphi</groupId>
@@ -716,27 +774,6 @@
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <configuration>
-                    <header>com/mycila/maven/plugin/license/templates/GPL-3.txt</header>
-                    <properties>
-                        <owner>${project.organization.name}</owner>
-                        <project.name>Graylog</project.name>
-                    </properties>
-                    <includes>
-                        <include>**/src/main/java/**</include>
-                        <include>**/src/test/java/**</include>
-                    </includes>
-                    <excludes>
-                        <exclude>graylog2-web-interface/plugin/**</exclude>
-                    </excludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
@@ -748,7 +785,8 @@
                 <jdk>[1.8,)</jdk>
             </activation>
             <properties>
-                <additionalparam>-Xdoclint:none</additionalparam>
+                <doclint>none</doclint>
+                <quiet>true</quiet>
             </properties>
         </profile>
         <profile>
@@ -772,12 +810,12 @@
                                 <plugin>
                                     <groupId>com.h3xstream.findsecbugs</groupId>
                                     <artifactId>findsecbugs-plugin</artifactId>
-                                    <version>1.7.1</version>
+                                    <version>1.10.1</version>
                                 </plugin>
                                 <plugin>
                                     <groupId>com.mebigfatguy.fb-contrib</groupId>
                                     <artifactId>fb-contrib</artifactId>
-                                    <version>7.2.0.sb</version>
+                                    <version>7.4.3</version>
                                 </plugin>
                             </plugins>
                         </configuration>
@@ -805,6 +843,33 @@
                                 <goals>
                                     <goal>check</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>dependency-check</id>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-enforcer-plugin</artifactId>
+                        <version>3.0.0-M3</version>
+                        <executions>
+                            <execution>
+                                <id>check-dependencies</id>
+                                <goals>
+                                    <goal>enforce</goal>
+                                </goals>
+                                <configuration>
+                                    <rules>
+                                        <banDuplicatePomDependencyVersions/>
+                                        <dependencyConvergence/>
+                                    </rules>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.processors;
 
@@ -29,9 +29,12 @@ import org.graylog.plugins.pipelineprocessor.ast.Rule;
 import org.graylog.plugins.pipelineprocessor.codegen.PipelineClassloader;
 import org.graylog.plugins.pipelineprocessor.db.PipelineService;
 import org.graylog.plugins.pipelineprocessor.db.PipelineStreamConnectionsService;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigDto;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigService;
 import org.graylog.plugins.pipelineprocessor.db.RuleService;
 import org.graylog.plugins.pipelineprocessor.events.PipelineConnectionsChangedEvent;
 import org.graylog.plugins.pipelineprocessor.events.PipelinesChangedEvent;
+import org.graylog.plugins.pipelineprocessor.events.RuleMetricsConfigChangedEvent;
 import org.graylog.plugins.pipelineprocessor.events.RulesChangedEvent;
 import org.graylog.plugins.pipelineprocessor.parser.FunctionRegistry;
 import org.graylog.plugins.pipelineprocessor.parser.ParseException;
@@ -63,6 +66,7 @@ public class ConfigurationStateUpdater {
     private final PipelineService pipelineService;
     private final PipelineStreamConnectionsService pipelineStreamConnectionsService;
     private final PipelineRuleParser pipelineRuleParser;
+    private final RuleMetricsConfigService ruleMetricsConfigService;
     private final MetricRegistry metricRegistry;
     private final FunctionRegistry functionRegistry;
     private final ScheduledExecutorService scheduler;
@@ -79,6 +83,7 @@ public class ConfigurationStateUpdater {
                                      PipelineService pipelineService,
                                      PipelineStreamConnectionsService pipelineStreamConnectionsService,
                                      PipelineRuleParser pipelineRuleParser,
+                                     RuleMetricsConfigService ruleMetricsConfigService,
                                      MetricRegistry metricRegistry,
                                      FunctionRegistry functionRegistry,
                                      @Named("daemonScheduler") ScheduledExecutorService scheduler,
@@ -89,6 +94,7 @@ public class ConfigurationStateUpdater {
         this.pipelineService = pipelineService;
         this.pipelineStreamConnectionsService = pipelineStreamConnectionsService;
         this.pipelineRuleParser = pipelineRuleParser;
+        this.ruleMetricsConfigService = ruleMetricsConfigService;
         this.metricRegistry = metricRegistry;
         this.functionRegistry = functionRegistry;
         this.scheduler = scheduler;
@@ -130,6 +136,7 @@ public class ConfigurationStateUpdater {
             try {
                 rule = pipelineRuleParser.parseRule(ruleDao.id(), ruleDao.source(), false, commonClassLoader);
             } catch (ParseException e) {
+                log.warn("Ignoring non parseable rule <{}/{}> with errors <{}>", ruleDao.title(), ruleDao.id(), e.getErrors());
                 rule = Rule.alwaysFalse("Failed to parse rule: " + ruleDao.id());
             }
             ruleNameMap.put(rule.name(), rule);
@@ -160,7 +167,8 @@ public class ConfigurationStateUpdater {
         }
         ImmutableSetMultimap<String, Pipeline> streamPipelineConnections = ImmutableSetMultimap.copyOf(connections);
 
-        final PipelineInterpreter.State newState = stateFactory.newState(currentPipelines, streamPipelineConnections);
+        final RuleMetricsConfigDto ruleMetricsConfig = ruleMetricsConfigService.get();
+        final PipelineInterpreter.State newState = stateFactory.newState(currentPipelines, streamPipelineConnections, ruleMetricsConfig);
         latestState.set(newState);
         return newState;
     }
@@ -234,6 +242,12 @@ public class ConfigurationStateUpdater {
     @Subscribe
     public void handlePipelineStateChange(PipelineInterpreter.State event) {
         log.debug("Pipeline interpreter state got updated");
+    }
+
+    @Subscribe
+    public void handleRuleMetricsConfigChange(RuleMetricsConfigChangedEvent event) {
+        log.debug("Rule metrics config changed: {}", event);
+        scheduler.schedule(() -> serverEventBus.post(reloadAndSave()), 0, TimeUnit.SECONDS);
     }
 
     @VisibleForTesting

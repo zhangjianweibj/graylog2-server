@@ -1,16 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Button } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
 import naturalSort from 'javascript-natural-sort';
 
+import { LinkContainer } from 'components/graylog/router';
+import { Button } from 'components/graylog';
 import { Spinner } from 'components/common';
 import { AlertConditionsList } from 'components/alertconditions';
-
 import Routes from 'routing/Routes';
-
 import CombinedProvider from 'injection/CombinedProvider';
+
 const { StreamsStore } = CombinedProvider.get('Streams');
 const { AlertConditionsStore, AlertConditionsActions } = CombinedProvider.get('AlertConditions');
 
@@ -34,10 +49,13 @@ const AlertConditionsComponent = createReactClass({
     });
 
     AlertConditionsActions.listAll();
+    AlertConditionsActions.available();
   },
 
   _isLoading() {
-    return !this.state.streams || !this.state.allAlertConditions;
+    const { streams, allAlertConditions, availableConditions } = this.state;
+
+    return !streams || !allAlertConditions || !availableConditions;
   },
 
   render() {
@@ -45,22 +63,29 @@ const AlertConditionsComponent = createReactClass({
       return <Spinner />;
     }
 
-    const alertConditions = this.state.allAlertConditions.sort((a1, a2) => {
+    const { streams, allAlertConditions, availableConditions } = this.state;
+
+    const alertConditions = allAlertConditions.sort((a1, a2) => {
       const t1 = a1.title || 'Untitled';
       const t2 = a2.title || 'Untitled';
+
       return naturalSort(t1.toLowerCase(), t2.toLowerCase());
     });
 
     return (
       <div>
         <div className="pull-right">
-          <LinkContainer to={Routes.ALERTS.NEW_CONDITION}>
+          <LinkContainer to={Routes.LEGACY_ALERTS.NEW_CONDITION}>
             <Button bsStyle="success">Add new condition</Button>
           </LinkContainer>
         </div>
         <h2>Conditions</h2>
         <p>These are all configured alert conditions.</p>
-        <AlertConditionsList alertConditions={alertConditions} streams={this.state.streams} />
+        <AlertConditionsList alertConditions={alertConditions}
+                             availableConditions={availableConditions}
+                             streams={streams}
+                             onConditionUpdate={this._loadData}
+                             onConditionDelete={this._loadData} />
       </div>
     );
   },

@@ -1,24 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.beats;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.assistedinject.Assisted;
+import org.graylog2.jackson.TypeReferences;
 import org.graylog2.plugin.Message;
 import org.graylog2.plugin.Tools;
 import org.graylog2.plugin.configuration.Configuration;
@@ -40,7 +40,7 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
-@Codec(name = "beats-legacy", displayName = "Beats Legacy")
+@Codec(name = "beats-deprecated", displayName = "Beats (deprecated)")
 public class BeatsCodec extends AbstractCodec {
     private static final Logger LOG = LoggerFactory.getLogger(BeatsCodec.class);
     private static final String MAP_KEY_SEPARATOR = "_";
@@ -59,8 +59,7 @@ public class BeatsCodec extends AbstractCodec {
         final byte[] payload = rawMessage.getPayload();
         final Map<String, Object> event;
         try {
-            event = objectMapper.readValue(payload, new TypeReference<Map<String, Object>>() {
-            });
+            event = objectMapper.readValue(payload, TypeReferences.MAP_STRING_OBJECT);
         } catch (IOException e) {
             LOG.error("Couldn't decode raw message {}", rawMessage);
             return null;

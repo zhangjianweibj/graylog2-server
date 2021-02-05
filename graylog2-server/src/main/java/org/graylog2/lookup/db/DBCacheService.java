@@ -1,29 +1,31 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.lookup.db;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Streams;
 import com.mongodb.BasicDBObject;
 import org.bson.types.ObjectId;
 import org.graylog2.bindings.providers.MongoJackObjectMapperProvider;
 import org.graylog2.database.MongoConnection;
 import org.graylog2.database.PaginatedList;
+import org.graylog2.events.ClusterEventBus;
 import org.graylog2.lookup.dto.CacheDto;
+import org.graylog2.lookup.events.CachesDeleted;
+import org.graylog2.lookup.events.CachesUpdated;
 import org.mongojack.DBCursor;
 import org.mongojack.DBQuery;
 import org.mongojack.DBSort;
@@ -36,20 +38,22 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class DBCacheService {
-
     private final JacksonDBCollection<CacheDto, ObjectId> db;
+    private final ClusterEventBus clusterEventBus;
 
     @Inject
     public DBCacheService(MongoConnection mongoConnection,
-                          MongoJackObjectMapperProvider mapper) {
+                          MongoJackObjectMapperProvider mapper,
+                          ClusterEventBus clusterEventBus) {
 
-        db = JacksonDBCollection.wrap(mongoConnection.getDatabase().getCollection("lut_caches"),
+        this.db = JacksonDBCollection.wrap(mongoConnection.getDatabase().getCollection("lut_caches"),
                 CacheDto.class,
                 ObjectId.class,
                 mapper.get());
+        this.clusterEventBus = clusterEventBus;
+
         db.createIndex(new BasicDBObject("name", 1), new BasicDBObject("unique", true));
     }
 
@@ -65,17 +69,20 @@ public class DBCacheService {
 
     public CacheDto save(CacheDto table) {
         WriteResult<CacheDto, ObjectId> save = db.save(table);
-        return save.getSavedObject();
+        final CacheDto savedCache = save.getSavedObject();
+        clusterEventBus.post(CachesUpdated.create(savedCache.id()));
+
+        return savedCache;
     }
 
     public PaginatedList<CacheDto> findPaginated(DBQuery.Query query, DBSort.SortBuilder sort, int page, int perPage) {
-
-        final DBCursor<CacheDto> cursor = db.find(query)
+        try (DBCursor<CacheDto> cursor = db.find(query)
                 .sort(sort)
                 .limit(perPage)
-                .skip(perPage * Math.max(0, page - 1));
+                .skip(perPage * Math.max(0, page - 1))) {
 
-        return new PaginatedList<>(asImmutableList(cursor), cursor.count(), page, perPage);
+            return new PaginatedList<>(asImmutableList(cursor), cursor.count(), page, perPage);
+        }
     }
 
     private ImmutableList<CacheDto> asImmutableList(Iterator<? extends CacheDto> cursor) {
@@ -83,19 +90,23 @@ public class DBCacheService {
     }
 
     public void delete(String idOrName) {
-        try {
-            db.removeById(new ObjectId(idOrName));
-        } catch (IllegalArgumentException e) {
-            // not an ObjectId, try again with name
-            db.remove(DBQuery.is("name", idOrName));
-        }
+        final Optional<CacheDto> cacheDto = get(idOrName);
+        cacheDto.map(CacheDto::id)
+                .map(ObjectId::new)
+                .ifPresent(db::removeById);
+        cacheDto.ifPresent(cache -> clusterEventBus.post(CachesDeleted.create(cache.id())));
     }
 
     public Collection<CacheDto> findByIds(Set<String> idSet) {
-        return asImmutableList(db.find(DBQuery.in("_id", idSet.stream().map(ObjectId::new).collect(Collectors.toList()))));
+        final DBQuery.Query query = DBQuery.in("_id", idSet.stream().map(ObjectId::new).collect(Collectors.toList()));
+        try (DBCursor<CacheDto> cursor = db.find(query)) {
+            return asImmutableList(cursor);
+        }
     }
 
-    public Stream<CacheDto> streamAll() {
-        return Streams.stream((Iterable<CacheDto>) db.find());
+    public Collection<CacheDto> findAll() {
+        try (DBCursor<CacheDto> cursor = db.find()) {
+            return asImmutableList(cursor);
+        }
     }
 }

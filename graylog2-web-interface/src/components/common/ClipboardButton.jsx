@@ -1,7 +1,24 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, Tooltip, OverlayTrigger } from 'react-bootstrap';
-import Clipboard from 'clipboard';
+import ClipboardJS from 'clipboard';
+
+import { Tooltip, OverlayTrigger, Button } from 'components/graylog';
 
 /**
  * Component that renders a button to copy some text in the clipboard when pressed.
@@ -31,12 +48,22 @@ class ClipboardButton extends React.Component {
     disabled: PropTypes.bool,
     /** Text to display when hovering over the button. */
     buttonTitle: PropTypes.string,
+    /** Container element which is focussed */
+    container: PropTypes.any,
   };
 
   static defaultProps = {
     action: 'copy',
     disabled: false,
     buttonTitle: undefined,
+    container: undefined,
+    text: undefined,
+    target: undefined,
+    className: undefined,
+    style: undefined,
+    bsStyle: undefined,
+    bsSize: undefined,
+    onSuccess: () => {},
   };
 
   state = {
@@ -44,7 +71,14 @@ class ClipboardButton extends React.Component {
   };
 
   componentDidMount() {
-    this.clipboard = new Clipboard('[data-clipboard-button]');
+    const { container } = this.props;
+    const options = {};
+
+    if (container) {
+      options.container = container;
+    }
+
+    this.clipboard = new ClipboardJS('[data-clipboard-button]', options);
     this.clipboard.on('success', this._onSuccess);
     this.clipboard.on('error', this._onError);
   }
@@ -56,46 +90,44 @@ class ClipboardButton extends React.Component {
   }
 
   _onSuccess = (event) => {
+    const { onSuccess } = this.props;
+
     this.setState({ tooltipMessage: 'Copied!' });
 
-    if (this.props.onSuccess) {
-      this.props.onSuccess(event);
-    }
+    onSuccess(event);
 
     event.clearSelection();
   };
 
   _onError = (event) => {
     const key = event.action === 'cut' ? 'K' : 'C';
+
     this.setState({ tooltipMessage: <span>Press Ctrl+{key}&thinsp;/&thinsp;&#8984;{key} to {event.action}</span> });
   };
 
   _getFilteredProps = () => {
     const { className, style, bsStyle, bsSize, disabled, buttonTitle } = this.props;
-    return {
-      className: className,
-      style: style,
-      bsStyle: bsStyle,
-      bsSize: bsSize,
-      disabled: disabled,
-      title: buttonTitle,
-    };
+
+    return { className, style, bsStyle, bsSize, disabled, title: buttonTitle };
   };
 
   render() {
-    const filteredProps = this._getFilteredProps();
-    const tooltip = <Tooltip id={'copy-button-tooltip'}>{this.state.tooltipMessage}</Tooltip>;
+    const { action, title, text, target } = this.props;
+    const { tooltipMessage } = this.state;
 
-    if (this.props.text) {
-      filteredProps['data-clipboard-text'] = this.props.text;
+    const filteredProps = this._getFilteredProps();
+    const tooltip = <Tooltip id="copy-button-tooltip">{tooltipMessage}</Tooltip>;
+
+    if (text) {
+      filteredProps['data-clipboard-text'] = text;
     } else {
-      filteredProps['data-clipboard-target'] = this.props.target;
+      filteredProps['data-clipboard-target'] = target;
     }
 
     return (
       <OverlayTrigger placement="top" trigger="click" overlay={tooltip} rootClose>
-        <Button data-clipboard-button data-clipboard-action={this.props.action} {...filteredProps}>
-          {this.props.title}
+        <Button data-clipboard-button data-clipboard-action={action} {...filteredProps}>
+          {title}
         </Button>
       </OverlayTrigger>
     );

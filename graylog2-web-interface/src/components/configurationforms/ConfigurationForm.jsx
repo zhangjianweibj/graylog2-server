@@ -1,23 +1,28 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import $ from 'jquery';
 import PropTypes from 'prop-types';
 import React from 'react';
 
-import createReactClass from 'create-react-class';
-
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
-import {
-  BooleanField,
-  DropdownField,
-  ListField,
-  NumberField,
-  TextField,
-  TitleField,
-} from 'components/configurationforms';
+import { ConfigurationFormField, TitleField } from 'components/configurationforms';
 
-const ConfigurationForm = createReactClass({
-  displayName: 'ConfigurationForm',
-
-  propTypes: {
+class ConfigurationForm extends React.Component {
+  static propTypes = {
     cancelAction: PropTypes.func,
     children: PropTypes.node,
     helpBlock: PropTypes.node,
@@ -26,47 +31,60 @@ const ConfigurationForm = createReactClass({
     title: PropTypes.node,
     titleValue: PropTypes.string,
     typeName: PropTypes.string,
+    // eslint-disable-next-line react/no-unused-prop-types
     values: PropTypes.object,
-  },
+    wrapperComponent: PropTypes.elementType,
+  };
 
-  getDefaultProps() {
-    return {
-      includeTitleField: true,
-      titleValue: '',
-      values: {},
-    };
-  },
+  static defaultProps = {
+    cancelAction: () => {},
+    children: null,
+    helpBlock: null,
+    title: null,
+    includeTitleField: true,
+    titleValue: '',
+    typeName: undefined,
+    values: {},
+    wrapperComponent: BootstrapModalForm,
+  };
 
-  getInitialState() {
-    return this._copyStateFromProps(this.props);
-  },
+  constructor(props) {
+    super(props);
+    this.state = this._copyStateFromProps(this.props);
+  }
 
-  componentWillReceiveProps(props) {
+  UNSAFE_componentWillReceiveProps(props) {
+    const { values = {} } = this.state || {};
     const newState = this._copyStateFromProps(props);
-    const values = this.state ? this.state.values : {};
+
     newState.values = $.extend(newState.values, values);
     this.setState(newState);
-  },
+  }
 
-  getValue() {
+  getValue = () => {
     const data = {};
-    const values = this.state.values;
-    if (this.props.includeTitleField) {
-      data.title = this.state.titleValue;
+    const { values } = this.state;
+    const { includeTitleField, typeName } = this.props;
+    const { configFields, titleValue } = this.state;
+
+    if (includeTitleField) {
+      data.title = titleValue;
     }
-    data.type = this.props.typeName;
+
+    data.type = typeName;
     data.configuration = {};
 
-    $.map(this.state.configFields, (field, name) => {
+    $.map(configFields, (field, name) => {
       // Replace undefined with null, as JSON.stringify will leave out undefined fields from the DTO sent to the server
       data.configuration[name] = (values[name] === undefined ? null : values[name]);
     });
 
     return data;
-  },
+  };
 
-  _copyStateFromProps(props) {
-    const effectiveTitleValue = (this.state && this.state.titleValue !== undefined ? this.state.titleValue : props.titleValue);
+  _copyStateFromProps = (props) => {
+    const { titleValue } = this.state || {};
+    const effectiveTitleValue = (titleValue !== undefined ? titleValue : props.titleValue);
     const defaultValues = {};
 
     if (props.configFields) {
@@ -80,103 +98,133 @@ const ConfigurationForm = createReactClass({
       values: $.extend({}, defaultValues, props.values),
       titleValue: effectiveTitleValue,
     };
-  },
+  };
 
-  _sortByOptionality(x1, x2) {
-    return (this.state.configFields[x1].is_optional - this.state.configFields[x2].is_optional);
-  },
+  _sortByPosOrOptionality = (x1, x2) => {
+    const { configFields } = this.state;
+    const DEFAULT_POSITION = 100; // corresponds to ConfigurationField.java
+    const x1pos = configFields[x1.name].position || DEFAULT_POSITION;
+    const x2pos = configFields[x2.name].position || DEFAULT_POSITION;
 
-  _save() {
+    let diff = x1pos - x2pos;
+
+    if (!diff) {
+      diff = configFields[x1.name].is_optional - configFields[x2.name].is_optional;
+    }
+
+    if (!diff) {
+      // Sort equal fields stably
+      diff = x1.pos - x2.pos;
+    }
+
+    return diff;
+  };
+
+  _save = () => {
     const data = this.getValue();
 
-    this.props.submitAction(data);
-    this.refs.modal.close();
-  },
+    const { submitAction } = this.props;
 
-  open() {
-    this.refs.modal.open();
-  },
+    submitAction(data);
 
-  _closeModal() {
-    this.setState($.extend(this.getInitialState(), { titleValue: this.props.titleValue }));
-    if (this.props.cancelAction) {
-      this.props.cancelAction();
+    if (this.modal && this.modal.close) {
+      this.modal.close();
     }
-  },
+  };
 
-  _handleTitleChange(field, value) {
+  open = () => {
+    if (this.modal && this.modal.open) {
+      this.modal.open();
+    }
+  };
+
+  _closeModal = () => {
+    const { cancelAction, titleValue } = this.props;
+
+    this.setState($.extend(this._copyStateFromProps(this.props), { titleValue: titleValue }));
+
+    if (cancelAction) {
+      cancelAction();
+    }
+  };
+
+  _handleTitleChange = (field, value) => {
     this.setState({ titleValue: value });
-  },
+  };
 
-  _handleChange(field, value) {
-    const values = this.state.values;
+  _handleChange = (field, value) => {
+    const { values } = this.state;
+
     values[field] = value;
     this.setState({ values: values });
-  },
+  };
 
-  _renderConfigField(configField, key, autoFocus) {
-    const value = this.state.values[key];
-    const typeName = this.props.typeName;
-    const elementKey = `${typeName}-${key}`;
+  _renderConfigField = (configField, key, autoFocus) => {
+    const { values } = this.state;
+    const value = values[key];
+    const { typeName } = this.props;
 
-    switch (configField.type) {
-      case 'text':
-        return (<TextField key={elementKey} typeName={typeName} title={key} field={configField}
-                           value={value} onChange={this._handleChange} autoFocus={autoFocus} />);
-      case 'number':
-        return (<NumberField key={elementKey} typeName={typeName} title={key} field={configField}
-                             value={value} onChange={this._handleChange} autoFocus={autoFocus} />);
-      case 'boolean':
-        return (<BooleanField key={elementKey} typeName={typeName} title={key} field={configField}
-                              value={value} onChange={this._handleChange} autoFocus={autoFocus} />);
-      case 'dropdown':
-        return (<DropdownField key={elementKey} typeName={typeName} title={key} field={configField}
-                               value={value} onChange={this._handleChange} autoFocus={autoFocus} addPlaceholder />);
-      case 'list':
-        return (<ListField key={elementKey} typeName={typeName} title={key} field={configField}
-                           value={value} onChange={this._handleChange} autoFocus={autoFocus} addPlaceholder />);
-      default:
-        return null;
-    }
-  },
+    return (
+      <ConfigurationFormField key={key}
+                              typeName={typeName}
+                              configField={configField}
+                              configKey={key}
+                              configValue={value}
+                              autoFocus={autoFocus}
+                              onChange={this._handleChange} />
+    );
+  };
 
   render() {
-    const typeName = this.props.typeName;
-    const title = this.props.title;
-    const helpBlock = this.props.helpBlock;
+    const { typeName, title, helpBlock, wrapperComponent: WrapperComponent = BootstrapModalForm, includeTitleField, children } = this.props;
 
     let shouldAutoFocus = true;
     let titleElement;
-    if (this.props.includeTitleField) {
-      titleElement = (<TitleField key={`${typeName}-title`} typeName={typeName} value={this.state.titleValue}
-                                  onChange={this._handleTitleChange} helpBlock={helpBlock} />);
+
+    if (includeTitleField) {
+      const { titleValue } = this.state;
+
+      titleElement = (
+        <TitleField key={`${typeName}-title`}
+                    typeName={typeName}
+                    value={titleValue}
+                    onChange={this._handleTitleChange}
+                    helpBlock={helpBlock} />
+      );
+
       shouldAutoFocus = false;
     }
 
-    const configFieldKeys = $.map(this.state.configFields, (v, k) => k).sort(this._sortByOptionality);
-    const configFields = configFieldKeys.map((key) => {
-      const configField = this._renderConfigField(this.state.configFields[key], key, shouldAutoFocus);
+    const { configFields } = this.state;
+    const configFieldKeys = $.map(configFields, (field, name) => name)
+      .map((name, pos) => ({ name: name, pos: pos }))
+      .sort(this._sortByPosOrOptionality);
+
+    const renderedConfigFields = configFieldKeys.map((key) => {
+      const configField = this._renderConfigField(configFields[key.name], key.name, shouldAutoFocus);
+
       if (shouldAutoFocus) {
         shouldAutoFocus = false;
       }
+
       return configField;
     });
 
     return (
-      <BootstrapModalForm ref="modal"
-                          title={title}
-                          onCancel={this._closeModal}
-                          onSubmitForm={this._save}
-                          submitButtonText="Save">
+      <WrapperComponent ref={(modal) => { this.modal = modal; }}
+                        title={title}
+                        onCancel={this._closeModal}
+                        onSubmitForm={this._save}
+                        submitButtonText="Save">
         <fieldset>
           <input type="hidden" name="type" value={typeName} />
-          {this.props.children}
+          {children}
           {titleElement}
-          {configFields}
+          {renderedConfigFields}
         </fieldset>
-      </BootstrapModalForm>
+      </WrapperComponent>
     );
-  },
-});
+  }
+}
 
 export default ConfigurationForm;

@@ -1,13 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Alert, Row, Col } from 'react-bootstrap';
 
 import StoreProvider from 'injection/StoreProvider';
-const NotificationsStore = StoreProvider.getStore('Notifications');
-
-import { Spinner } from 'components/common';
+import { Alert, Row, Col } from 'components/graylog';
+import { Icon, Spinner } from 'components/common';
 import Notification from 'components/notifications/Notification';
+
+const NotificationsStore = StoreProvider.getStore('Notifications');
 
 const NotificationsList = createReactClass({
   displayName: 'NotificationsList',
@@ -17,6 +33,7 @@ const NotificationsList = createReactClass({
     if (count === 0) {
       return 'is no notification';
     }
+
     if (count === 1) {
       return 'is one notification';
     }
@@ -36,14 +53,16 @@ const NotificationsList = createReactClass({
 
     if (count === 0) {
       title = 'No notifications';
+
       content = (
         <Alert bsStyle="success" className="notifications-none">
-          <i className="fa fa-check-circle" />{' '}
+          <Icon name="check-circle" />{' '}
           &nbsp;No notifications
         </Alert>
       );
     } else {
       title = `There ${this._formatNotificationCount(count)}`;
+
       content = this.state.notifications.map((notification) => {
         return <Notification key={`${notification.type}-${notification.timestamp}`} notification={notification} />;
       });

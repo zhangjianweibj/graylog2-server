@@ -1,28 +1,28 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin.utilities;
 
 import com.google.common.io.Files;
-
 import org.junit.Test;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
@@ -93,5 +93,15 @@ public class FileInfoTest {
         Files.write("test".getBytes(StandardCharsets.US_ASCII), tempFile);
         change = fileInfo.checkForChange();
         assertThat(change.isChanged()).isTrue();
+    }
+
+    @Test
+    public void empty() {
+        assertThat(FileInfo.empty()).isEqualTo(FileInfo.builder()
+                .path(Paths.get(""))
+                .key(null)
+                .modificationTime(null)
+                .size(-1L)
+                .build());
     }
 }

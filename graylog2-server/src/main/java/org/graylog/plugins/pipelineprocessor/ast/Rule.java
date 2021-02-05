@@ -1,29 +1,27 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.ast;
-
-import com.google.auto.value.AutoValue;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
-
+import com.google.auto.value.AutoValue;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import org.antlr.v4.runtime.CommonToken;
 import org.graylog.plugins.pipelineprocessor.ast.expressions.BooleanExpression;
 import org.graylog.plugins.pipelineprocessor.ast.expressions.LogicalExpression;
@@ -34,13 +32,12 @@ import org.reflections.ReflectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
-
-import javax.annotation.Nullable;
 
 @AutoValue
 public abstract class Rule {
@@ -208,11 +205,8 @@ public abstract class Rule {
         public abstract Rule build();
     }
 
-
+    @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("Rule ");
-        sb.append("'").append(name()).append("'");
-        sb.append(" (").append(id()).append(")");
-        return sb.toString();
+        return "Rule '" + name() + "' (" + id() + ")";
     }
 }

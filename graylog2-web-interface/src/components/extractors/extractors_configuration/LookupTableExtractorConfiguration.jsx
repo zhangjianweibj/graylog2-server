@@ -1,10 +1,26 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Row, Col, Button } from 'react-bootstrap';
-import { Link } from 'react-router';
 
+import { Link } from 'components/graylog/router';
+import { Row, Col, Button } from 'components/graylog';
 import { Input } from 'components/bootstrap';
-import { Select, Spinner } from 'components/common';
+import { Select, Spinner, Icon } from 'components/common';
 import Routes from 'routing/Routes';
 import UserNotification from 'util/UserNotification';
 import FormUtils from 'util/FormsUtils';
@@ -41,25 +57,28 @@ class LookupTableExtractorConfiguration extends React.Component {
   _updateConfigValue = (key, value) => {
     this.props.onExtractorPreviewLoad(undefined);
     const newConfig = this.props.configuration;
+
     newConfig[key] = value;
     this.props.onChange(newConfig);
   };
 
   _onChange = (key) => {
-    return event => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
+    return (event) => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
   };
 
   _onSelect = (key) => {
-    return value => this._updateConfigValue(key, value);
+    return (value) => this._updateConfigValue(key, value);
   };
 
   _onTryClick = () => {
     this.setState({ trying: true });
 
     const promise = ToolsStore.testLookupTable(this.props.configuration.lookup_table_name, this.props.exampleMessage);
+
     promise.then((result) => {
       if (result.error) {
         UserNotification.warning(`We were not able to run the lookup: ${result.error_message}`);
+
         return;
       }
 
@@ -104,13 +123,13 @@ class LookupTableExtractorConfiguration extends React.Component {
               <Select placeholder="Select a lookup table"
                       clearable={false}
                       options={lookupTables}
-                      matchProp="value"
+                      matchProp="label"
                       onChange={this._onSelect('lookup_table_name')}
                       value={this.props.configuration.lookup_table_name} />
             </Col>
             <Col md={1} className="text-right">
               <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-                {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+                {this.state.trying ? <Icon name="spinner" spin /> : 'Try'}
               </Button>
             </Col>
           </Row>

@@ -1,25 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.grok;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import oi.thekraken.grok.api.Grok;
-import oi.thekraken.grok.api.exception.GrokException;
+import io.krakens.grok.api.Grok;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Rule;
@@ -49,67 +48,66 @@ public class GrokPatternRegistryTest {
 
     private GrokPatternRegistry grokPatternRegistry;
     private EventBus eventBus;
-    private ScheduledExecutorService executor;
     @Mock
     private GrokPatternService grokPatternService;
 
     @Before
     public void setUp() {
         eventBus = new EventBus("Test");
-        executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("updater-%d").build());
+        final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("updater-%d").build());
         when(grokPatternService.loadAll()).thenReturn(GROK_PATTERNS);
         grokPatternRegistry = new GrokPatternRegistry(eventBus, grokPatternService, executor);
     }
 
     @Test
-    public void grokPatternsChanged() throws Exception {
+    public void grokPatternsChanged() {
         final Set<GrokPattern> newPatterns = Collections.singleton(GrokPattern.create("NEW_PATTERN", "\\w+"));
         when(grokPatternService.loadAll()).thenReturn(newPatterns);
-        eventBus.post(GrokPatternsChangedEvent.create(Collections.emptySet(), Collections.singleton("NEW_PATTERN")));
+        eventBus.post(GrokPatternsUpdatedEvent.create(Collections.singleton("NEW_PATTERN")));
 
         assertThat(grokPatternRegistry.patterns()).isEqualTo(newPatterns);
     }
 
     @Test
-    public void cachedGrokForPattern() throws Exception {
+    public void cachedGrokForPattern() {
         final Grok grok = grokPatternRegistry.cachedGrokForPattern("%{TESTNUM}");
         assertThat(grok.getPatterns()).containsEntry(GROK_PATTERN.name(), GROK_PATTERN.pattern());
     }
 
     @Test
-    public void cachedGrokForPatternThrowsRuntimeException() throws Exception {
-        expectedException.expectMessage("Invalid Pattern");
+    public void cachedGrokForPatternThrowsRuntimeException() {
+        expectedException.expectMessage("No definition for key 'EMPTY' found, aborting");
         expectedException.expect(RuntimeException.class);
-        expectedException.expectCause(Matchers.any(GrokException.class));
+        expectedException.expectCause(Matchers.any(IllegalArgumentException.class));
 
         final Set<GrokPattern> newPatterns = Collections.singleton(GrokPattern.create("EMPTY", ""));
         when(grokPatternService.loadAll()).thenReturn(newPatterns);
-        eventBus.post(GrokPatternsChangedEvent.create(Collections.emptySet(), Collections.singleton("EMPTY")));
+        eventBus.post(GrokPatternsUpdatedEvent.create(Collections.singleton("EMPTY")));
 
         grokPatternRegistry.cachedGrokForPattern("%{EMPTY}");
     }
 
     @Test
-    public void cachedGrokForPatternWithNamedCaptureOnly() throws Exception {
+    public void cachedGrokForPatternWithNamedCaptureOnly() {
         final Grok grok = grokPatternRegistry.cachedGrokForPattern("%{TESTNUM}", true);
         assertThat(grok.getPatterns()).containsEntry(GROK_PATTERN.name(), GROK_PATTERN.pattern());
     }
 
     @Test
-    public void cachedGrokForPatternWithNamedCaptureOnlyThrowsRuntimeException() throws Exception {
-        expectedException.expectMessage("Invalid Pattern");
+    public void cachedGrokForPatternWithNamedCaptureOnlyThrowsRuntimeException() {
+        expectedException.expectMessage("No definition for key 'EMPTY' found, aborting");
         expectedException.expect(RuntimeException.class);
-        expectedException.expectCause(Matchers.any(GrokException.class));
+        expectedException.expectCause(Matchers.any(IllegalArgumentException.class));
 
         final Set<GrokPattern> newPatterns = Collections.singleton(GrokPattern.create("EMPTY", ""));
         when(grokPatternService.loadAll()).thenReturn(newPatterns);
-        eventBus.post(GrokPatternsChangedEvent.create(Collections.emptySet(), Collections.singleton("EMPTY")));
+        eventBus.post(GrokPatternsUpdatedEvent.create(Collections.singleton("EMPTY")));
 
         grokPatternRegistry.cachedGrokForPattern("%{EMPTY}", true);
     }
 
     @Test
-    public void patterns() throws Exception {
+    public void patterns() {
         assertThat(grokPatternRegistry.patterns()).isEqualTo(GROK_PATTERNS);
     }
 }

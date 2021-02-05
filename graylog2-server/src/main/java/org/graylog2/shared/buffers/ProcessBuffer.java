@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.buffers;
 
@@ -21,11 +21,13 @@ import com.codahale.metrics.InstrumentedThreadFactory;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
 import org.graylog2.plugin.GlobalMetricNames;
+import org.graylog2.plugin.Message;
 import org.graylog2.plugin.buffers.Buffer;
 import org.graylog2.plugin.buffers.MessageEvent;
 import org.graylog2.plugin.journal.RawMessage;
@@ -49,6 +51,7 @@ public class ProcessBuffer extends Buffer {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessBuffer.class);
 
     private final Meter incomingMessages;
+    private final ProcessBufferProcessor[] processors;
 
     @Inject
     public ProcessBuffer(MetricRegistry metricRegistry,
@@ -83,7 +86,7 @@ public class ProcessBuffer extends Buffer {
         LOG.info("Initialized ProcessBuffer with ring size <{}> and wait strategy <{}>.",
                 ringBufferSize, waitStrategy.getClass().getSimpleName());
 
-        final ProcessBufferProcessor[] processors = new ProcessBufferProcessor[processorCount];
+        processors = new ProcessBufferProcessor[processorCount];
         for (int i = 0; i < processorCount; i++) {
             processors[i] = bufferProcessorFactory.create(decodingProcessorFactory.create(decodeTime, parseTime));
         }
@@ -111,5 +114,14 @@ public class ProcessBuffer extends Buffer {
     @Override
     protected void afterInsert(int n) {
         incomingMessages.mark(n);
+    }
+
+    public ImmutableMap<String,String> getDump() {
+        final ImmutableMap.Builder<String, String> processBufferDump = ImmutableMap.builder();
+        for (int i = 0, processorsLength = processors.length; i < processorsLength; i++) {
+            final ProcessBufferProcessor proc = processors[i];
+            processBufferDump.put("ProcessBufferProcessor #" + i, proc.getCurrentMessage().map(Message::toDumpString).orElse("idle"));
+        }
+        return processBufferDump.build();
     }
 }

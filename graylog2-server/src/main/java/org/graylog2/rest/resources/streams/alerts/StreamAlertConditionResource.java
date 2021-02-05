@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.streams.alerts;
 
@@ -27,6 +27,7 @@ import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.graylog2.alerts.AlertService;
 import org.graylog2.audit.AuditEventTypes;
 import org.graylog2.audit.jersey.AuditEvent;
+import org.graylog2.audit.jersey.NoAuditEvent;
 import org.graylog2.database.NotFoundException;
 import org.graylog2.plugin.alarms.AlertCondition;
 import org.graylog2.plugin.configuration.ConfigurationException;
@@ -36,6 +37,7 @@ import org.graylog2.plugin.streams.Stream;
 import org.graylog2.rest.models.streams.alerts.AlertConditionListSummary;
 import org.graylog2.rest.models.streams.alerts.AlertConditionSummary;
 import org.graylog2.rest.models.streams.alerts.requests.CreateConditionRequest;
+import org.graylog2.rest.resources.streams.responses.AlertConditionTestResponse;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
 import org.graylog2.streams.StreamService;
@@ -61,7 +63,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RequiresAuthentication
-@Api(value = "Stream/AlertConditions", description = "Manage stream alert conditions")
+@Api(value = "Stream/AlertConditions", description = "Manage stream legacy alert conditions")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Path("/streams/{streamId}/alerts/conditions")
@@ -145,7 +147,7 @@ public class StreamAlertConditionResource extends RestResource {
             @ApiResponse(code = 404, message = "Stream not found."),
             @ApiResponse(code = 400, message = "Invalid ObjectId.")
     })
-    public AlertConditionListSummary list(@ApiParam(name = "streamId", value = "The stream id this new alert condition belongs to.", required = true)
+    public AlertConditionListSummary list(@ApiParam(name = "streamId", value = "The id of the stream whose alert conditions we want.", required = true)
                                           @PathParam("streamId") String streamid) throws NotFoundException {
         checkPermission(RestPermissions.STREAMS_READ, streamid);
 
@@ -210,6 +212,60 @@ public class StreamAlertConditionResource extends RestResource {
                 condition.getParameters(),
                 alertService.inGracePeriod(condition),
                 condition.getTitle());
+    }
+
+
+    @POST
+    @Path("test")
+    @Timed
+    @ApiOperation("Test new alert condition")
+    @NoAuditEvent("resource doesn't modify any data")
+    public Response testNew(@ApiParam(name = "streamId", value = "The stream ID this alert condition belongs to.", required = true) @PathParam("streamId") String streamId,
+                            @ApiParam(name = "Alert condition parameters", required = true) @Valid @NotNull CreateConditionRequest ccr) throws NotFoundException {
+        checkPermission(RestPermissions.STREAMS_EDIT, streamId);
+
+        final Stream stream = streamService.load(streamId);
+
+        try {
+            final AlertCondition alertCondition = alertService.fromRequest(convertConfigurationInRequest(ccr), stream, getCurrentUser().getName());
+
+            return Response.ok(testAlertCondition(alertCondition)).build();
+        } catch (ConfigurationException e) {
+            throw new BadRequestException("Invalid alert condition parameters", e);
+        }
+    }
+
+    @POST
+    @Path("{conditionId}/test")
+    @Timed
+    @ApiOperation("Test existing alert condition")
+    @NoAuditEvent("resource doesn't modify any data")
+    public Response testExisting(@ApiParam(name = "streamId", value = "The stream ID this alert condition belongs to.", required = true)
+                                 @PathParam("streamId") String streamId,
+                                 @ApiParam(name = "conditionId", value = "The alert condition ID to be fetched", required = true)
+                                 @PathParam("conditionId") String conditionId) throws NotFoundException {
+        checkPermission(RestPermissions.STREAMS_EDIT, streamId);
+
+        final Stream stream = streamService.load(streamId);
+        final AlertCondition alertCondition = streamService.getAlertCondition(stream, conditionId);
+
+        final AlertConditionTestResponse testResultResponse = testAlertCondition(alertCondition);
+
+        if (testResultResponse.error()) {
+            return Response.status(400).entity(testResultResponse).build();
+        } else {
+            return Response.ok(testResultResponse).build();
+        }
+    }
+
+    private AlertConditionTestResponse testAlertCondition(AlertCondition alertCondition) {
+        try {
+            final AlertCondition.CheckResult checkResult = alertCondition.runCheck();
+
+            return AlertConditionTestResponse.create(checkResult.isTriggered(), checkResult.getResultDescription());
+        } catch (Exception e) {
+            return AlertConditionTestResponse.createWithError(e);
+        }
     }
 
     private CreateConditionRequest convertConfigurationInRequest(final CreateConditionRequest request) {

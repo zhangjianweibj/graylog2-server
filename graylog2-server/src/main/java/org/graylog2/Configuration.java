@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2;
 
@@ -20,14 +20,16 @@ import com.github.joschi.jadconfig.Parameter;
 import com.github.joschi.jadconfig.ValidationException;
 import com.github.joschi.jadconfig.Validator;
 import com.github.joschi.jadconfig.ValidatorMethod;
+import com.github.joschi.jadconfig.converters.StringSetConverter;
 import com.github.joschi.jadconfig.converters.TrimmedStringSetConverter;
 import com.github.joschi.jadconfig.util.Duration;
-import com.github.joschi.jadconfig.validators.DirectoryPathReadableValidator;
 import com.github.joschi.jadconfig.validators.PositiveDurationValidator;
 import com.github.joschi.jadconfig.validators.PositiveIntegerValidator;
 import com.github.joschi.jadconfig.validators.PositiveLongValidator;
 import com.github.joschi.jadconfig.validators.StringNotBlankValidator;
 import org.graylog2.plugin.BaseConfiguration;
+import org.graylog2.security.realm.RootAccountRealm;
+import org.graylog2.shared.security.tls.DefaultTLSProtocolProvider;
 import org.graylog2.utilities.IPSubnetConverter;
 import org.graylog2.utilities.IpSubnet;
 import org.joda.time.DateTimeZone;
@@ -67,16 +69,14 @@ public class Configuration extends BaseConfiguration {
     @Parameter(value = "outputbuffer_processor_keep_alive_time", validator = PositiveIntegerValidator.class)
     private int outputBufferProcessorKeepAliveTime = 5000;
 
-    @Parameter("rules_file")
-    private String droolsRulesFile;
-
     @Parameter(value = "node_id_file", validator = NodeIdFileValidator.class)
     private String nodeIdFile = "/etc/graylog/server/node-id";
 
     @Parameter(value = "root_username")
     private String rootUsername = "admin";
 
-    @Parameter(value = "root_password_sha2", required = true)
+    // Required unless "root-user" is deactivated in the "deactivated_builtin_authentication_providers" setting
+    @Parameter(value = "root_password_sha2")
     private String rootPasswordSha2;
 
     @Parameter(value = "root_timezone")
@@ -119,7 +119,12 @@ public class Configuration extends BaseConfiguration {
     private int ldapConnectionTimeout = 2000;
 
     @Parameter(value = "alert_check_interval", validator = PositiveIntegerValidator.class)
+    @Deprecated
     private int alertCheckInterval = 60;
+
+    @Parameter(value = "enable_legacy_alerts")
+    @Deprecated
+    private boolean enableLegacyAlerts = false;
 
     @Parameter(value = "gc_warning_threshold")
     private Duration gcWarningThreshold = Duration.seconds(1L);
@@ -137,19 +142,25 @@ public class Configuration extends BaseConfiguration {
     private int userPasswordBCryptSaltSize = 10;
 
     @Parameter(value = "content_packs_loader_enabled")
-    private boolean contentPacksLoaderEnabled = true;
+    private boolean contentPacksLoaderEnabled = false;
 
-    @Parameter(value = "content_packs_dir", validators = DirectoryPathReadableValidator.class)
-    private Path contentPacksDir = Paths.get("data", "contentpacks");
+    @Parameter(value = "content_packs_dir")
+    private Path contentPacksDir = DEFAULT_DATA_DIR.resolve("contentpacks");
 
-    @Parameter(value = "content_packs_auto_load", converter = TrimmedStringSetConverter.class)
-    private Set<String> contentPacksAutoLoad = Collections.emptySet();
+    @Parameter(value = "content_packs_auto_install", converter = TrimmedStringSetConverter.class)
+    private Set<String> contentPacksAutoInstall = Collections.emptySet();
 
     @Parameter(value = "index_ranges_cleanup_interval", validator = PositiveDurationValidator.class)
     private Duration indexRangesCleanupInterval = Duration.hours(1L);
 
     @Parameter(value = "trusted_proxies", converter = IPSubnetConverter.class)
     private Set<IpSubnet> trustedProxies = Collections.emptySet();
+
+    @Parameter(value = "deactivated_builtin_authentication_providers", converter = StringSetConverter.class)
+    private Set<String> deactivatedBuiltinAuthenticationProviders = Collections.emptySet();
+
+    @Parameter(value = "enabled_tls_protocols", converter = StringSetConverter.class)
+    private Set<String> enabledTlsProtocols = DefaultTLSProtocolProvider.getDefaultSupportedTlsProtocols();
 
     public boolean isMaster() {
         return isMaster;
@@ -185,10 +196,6 @@ public class Configuration extends BaseConfiguration {
 
     public int getOutputBufferProcessorKeepAliveTime() {
         return outputBufferProcessorKeepAliveTime;
-    }
-
-    public String getDroolsRulesFile() {
-        return droolsRulesFile;
     }
 
     @Override
@@ -252,8 +259,14 @@ public class Configuration extends BaseConfiguration {
         return ldapConnectionTimeout;
     }
 
+    @Deprecated
     public int getAlertCheckInterval() {
         return alertCheckInterval;
+    }
+
+    @Deprecated
+    public boolean isEnableLegacyAlerts() {
+        return enableLegacyAlerts;
     }
 
     public Duration getGcWarningThreshold() {
@@ -284,8 +297,8 @@ public class Configuration extends BaseConfiguration {
         return contentPacksDir;
     }
 
-    public Set<String> getContentPacksAutoLoad() {
-        return contentPacksAutoLoad;
+    public Set<String> getContentPacksAutoInstall() {
+        return contentPacksAutoInstall;
     }
 
     public Duration getIndexRangesCleanupInterval() {
@@ -300,6 +313,14 @@ public class Configuration extends BaseConfiguration {
         return loadBalancerThrottleThresholdPercentage;
     }
 
+    public Set<String> getDeactivatedBuiltinAuthenticationProviders() {
+        return deactivatedBuiltinAuthenticationProviders;
+    }
+
+    public Set<String> getEnabledTlsProtocols() {
+        return enabledTlsProtocols;
+    }
+
     @ValidatorMethod
     @SuppressWarnings("unused")
     public void validatePasswordSecret() throws ValidationException {
@@ -307,6 +328,21 @@ public class Configuration extends BaseConfiguration {
         if (passwordSecret == null || passwordSecret.length() < 16) {
             throw new ValidationException("The minimum length for \"password_secret\" is 16 characters.");
         }
+    }
+
+    @ValidatorMethod
+    @SuppressWarnings("unused")
+    public void validateRootUser() throws ValidationException {
+        if (getRootPasswordSha2() == null && !isRootUserDisabled()) {
+            throw new ValidationException("Required parameter \"root_password_sha2\" not found.");
+        }
+    }
+
+    /**
+     * The root user is disabled if the {@link RootAccountRealm} is deactivated.
+     */
+    public boolean isRootUserDisabled() {
+        return getDeactivatedBuiltinAuthenticationProviders().contains(RootAccountRealm.NAME);
     }
 
     public static class NodeIdFileValidator implements Validator<String> {

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.grok;
 
@@ -22,7 +22,9 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import oi.thekraken.grok.api.Grok;
+import com.google.common.util.concurrent.UncheckedExecutionException;
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.GrokCompiler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,9 +72,19 @@ public class GrokPatternRegistry {
     }
 
     @Subscribe
-    public void grokPatternsChanged(GrokPatternsChangedEvent event) {
+    public void grokPatternsUpdated(GrokPatternsUpdatedEvent event) {
         // for now we simply reload everything and don't care what exactly has changed
         reload();
+    }
+
+    @Subscribe
+    public void grokPatternsDeleted(GrokPatternsDeletedEvent event) {
+        // for now we simply reload everything and don't care what exactly has changed
+        reload();
+    }
+
+    public boolean grokPatternExists(String patternName) {
+        return patterns.get().stream().anyMatch(pattern -> pattern.name().contains(patternName));
     }
 
     public Grok cachedGrokForPattern(String pattern) {
@@ -86,7 +98,7 @@ public class GrokPatternRegistry {
             } else {
                 return grokCache.get(pattern);
             }
-        } catch (ExecutionException e) {
+        } catch (UncheckedExecutionException | ExecutionException e) {
             final Throwable rootCause = Throwables.getRootCause(e);
             log.error("Unable to load grok pattern {} into cache", pattern, rootCause);
             throw new RuntimeException(rootCause);
@@ -113,12 +125,11 @@ public class GrokPatternRegistry {
 
         @Override
         public Grok load(@Nonnull String pattern) throws Exception {
-            final Grok grok = new Grok();
+            final GrokCompiler grokCompiler = GrokCompiler.newInstance();
             for (GrokPattern grokPattern : patterns()) {
-                grok.addPattern(grokPattern.name(), grokPattern.pattern());
+                grokCompiler.register(grokPattern.name(), grokPattern.pattern());
             }
-            grok.compile(pattern, namedCapturesOnly);
-            return grok;
+            return grokCompiler.compile(pattern, namedCapturesOnly);
         }
     }
 }

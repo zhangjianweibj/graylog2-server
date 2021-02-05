@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.db.memory;
 
@@ -21,11 +21,15 @@ import com.google.common.collect.MapMaker;
 import com.google.common.collect.Sets;
 import org.graylog.plugins.pipelineprocessor.db.RuleDao;
 import org.graylog.plugins.pipelineprocessor.db.RuleService;
+import org.graylog.plugins.pipelineprocessor.events.RulesChangedEvent;
 import org.graylog2.database.NotFoundException;
+import org.graylog2.events.ClusterEventBus;
 
+import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -33,12 +37,18 @@ import java.util.stream.Collectors;
  * A RuleService that does not persist any data, but simply keeps it in memory.
  */
 public class InMemoryRuleService implements RuleService {
-
     // poor man's id generator
-    private AtomicLong idGen = new AtomicLong(0);
+    private final AtomicLong idGen = new AtomicLong(0);
 
-    private Map<String, RuleDao> store = new MapMaker().makeMap();
-    private Map<String, String> titleToId = new MapMaker().makeMap();
+    private final Map<String, RuleDao> store = new ConcurrentHashMap<>();
+    private final Map<String, String> titleToId = new ConcurrentHashMap<>();
+
+    private final ClusterEventBus clusterBus;
+
+    @Inject
+    public InMemoryRuleService(ClusterEventBus clusterBus) {
+        this.clusterBus = clusterBus;
+    }
 
     @Override
     public RuleDao save(RuleDao rule) {
@@ -55,6 +65,8 @@ public class InMemoryRuleService implements RuleService {
         titleToId.put(toSave.title(), toSave.id());
         store.put(toSave.id(), toSave);
 
+        clusterBus.post(RulesChangedEvent.updatedRuleId(toSave.id()));
+
         return toSave;
     }
 
@@ -65,6 +77,15 @@ public class InMemoryRuleService implements RuleService {
             throw new NotFoundException("No such rule with id " + id);
         }
         return rule;
+    }
+
+    @Override
+    public RuleDao loadByName(String name) throws NotFoundException {
+        final String id = titleToId.get(name);
+        if (id == null) {
+            throw new NotFoundException("No rule with name " + name);
+        }
+        return load(id);
     }
 
     @Override
@@ -82,6 +103,7 @@ public class InMemoryRuleService implements RuleService {
         if (removed != null) {
             titleToId.remove(removed.title());
         }
+        clusterBus.post(RulesChangedEvent.deletedRuleId(id));
     }
 
     @Override

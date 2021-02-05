@@ -1,25 +1,21 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.indexer.ranges;
 
-import com.github.rholder.retry.Retryer;
-import com.github.rholder.retry.RetryerBuilder;
-import com.github.rholder.retry.StopStrategies;
-import com.github.rholder.retry.WaitStrategies;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
@@ -111,27 +107,29 @@ public class MongoIndexRangeService implements IndexRangeService {
 
     @Override
     public SortedSet<IndexRange> find(DateTime begin, DateTime end) {
-        final DBCursor<MongoIndexRange> indexRanges = collection.find(
-            DBQuery.or(
+        final DBQuery.Query query = DBQuery.or(
                 DBQuery.and(
-                    DBQuery.notExists("start"),  // "start" has been used by the old index ranges in MongoDB
-                    DBQuery.lessThanEquals(IndexRange.FIELD_BEGIN, end.getMillis()),
-                    DBQuery.greaterThanEquals(IndexRange.FIELD_END, begin.getMillis())
+                        DBQuery.notExists("start"),  // "start" has been used by the old index ranges in MongoDB
+                        DBQuery.lessThanEquals(IndexRange.FIELD_BEGIN, end.getMillis()),
+                        DBQuery.greaterThanEquals(IndexRange.FIELD_END, begin.getMillis())
                 ),
                 DBQuery.and(
-                    DBQuery.notExists("start"),  // "start" has been used by the old index ranges in MongoDB
-                    DBQuery.lessThanEquals(IndexRange.FIELD_BEGIN, 0L),
-                    DBQuery.greaterThanEquals(IndexRange.FIELD_END, 0L)
+                        DBQuery.notExists("start"),  // "start" has been used by the old index ranges in MongoDB
+                        DBQuery.lessThanEquals(IndexRange.FIELD_BEGIN, 0L),
+                        DBQuery.greaterThanEquals(IndexRange.FIELD_END, 0L)
                 )
-            )
         );
 
-        return ImmutableSortedSet.copyOf(IndexRange.COMPARATOR, (Iterator<? extends IndexRange>) indexRanges);
+        try (DBCursor<MongoIndexRange> indexRanges = collection.find(query)) {
+            return ImmutableSortedSet.copyOf(IndexRange.COMPARATOR, (Iterator<? extends IndexRange>) indexRanges);
+        }
     }
 
     @Override
     public SortedSet<IndexRange> findAll() {
-        return ImmutableSortedSet.copyOf(IndexRange.COMPARATOR, (Iterator<? extends IndexRange>) collection.find(DBQuery.notExists("start")));
+        try (DBCursor<MongoIndexRange> cursor = collection.find(DBQuery.notExists("start"))) {
+            return ImmutableSortedSet.copyOf(IndexRange.COMPARATOR, (Iterator<? extends IndexRange>) cursor);
+        }
     }
 
     @Override

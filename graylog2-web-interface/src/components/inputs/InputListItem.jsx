@@ -1,23 +1,36 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Button, DropdownButton, MenuItem, Col } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
 
+import { LinkContainer } from 'components/graylog/router';
+import { DropdownButton, MenuItem, Col, Button } from 'components/graylog';
 import { EntityListItem, IfPermitted, LinkToNode, Spinner } from 'components/common';
 import { ConfigurationWell } from 'components/configurationforms';
-
 import PermissionsMixin from 'util/PermissionsMixin';
 import Routes from 'routing/Routes';
-
 import StoreProvider from 'injection/StoreProvider';
-const InputTypesStore = StoreProvider.getStore('InputTypes');
-
 import ActionsProvider from 'injection/ActionsProvider';
-const InputsActions = ActionsProvider.getActions('Inputs');
-
 import { InputForm, InputStateBadge, InputStateControl, InputStaticFields, InputThroughput, StaticFieldForm } from 'components/inputs';
+
+const InputTypesStore = StoreProvider.getStore('InputTypes');
+const InputsActions = ActionsProvider.getActions('Inputs');
 
 const InputListItem = createReactClass({
   displayName: 'InputListItem',
@@ -37,11 +50,11 @@ const InputListItem = createReactClass({
   },
 
   _openStaticFieldForm() {
-    this.refs.staticFieldForm.open();
+    this.staticFieldForm.open();
   },
 
   _editInput() {
-    this.refs.configurationForm.open();
+    this.configurationForm.open();
   },
 
   _updateInput(data) {
@@ -53,7 +66,7 @@ const InputListItem = createReactClass({
       return <Spinner />;
     }
 
-    const input = this.props.input;
+    const { input } = this.props;
     const definition = this.state.inputDescriptions[input.type];
 
     const titleSuffix = (
@@ -94,6 +107,7 @@ const InputListItem = createReactClass({
     }
 
     let showMetricsMenuItem;
+
     if (!this.props.input.global) {
       showMetricsMenuItem = (
         <LinkContainer to={Routes.filtered_metrics(this.props.input.node, this.props.input.id)}>
@@ -140,14 +154,20 @@ const InputListItem = createReactClass({
       );
     }
 
-    const inputForm = definition ?
-      (<InputForm ref="configurationForm" key={`edit-form-input-${input.id}`}
-                   globalValue={input.global} nodeValue={input.node}
+    const inputForm = definition
+      ? (
+        <InputForm ref={(configurationForm) => { this.configurationForm = configurationForm; }}
+                   key={`edit-form-input-${input.id}`}
+                   globalValue={input.global}
+                   nodeValue={input.node}
                    configFields={definition.requested_configuration}
                    title={`Editing Input ${input.title}`}
                    titleValue={input.title}
-                   typeName={input.type} includeTitleField
-                   submitAction={this._updateInput} values={input.attributes} />) : null;
+                   typeName={input.type}
+                   includeTitleField
+                   submitAction={this._updateInput}
+                   values={input.attributes} />
+      ) : null;
 
     const additionalContent = (
       <div>
@@ -156,7 +176,7 @@ const InputListItem = createReactClass({
                              id={input.id}
                              configuration={input.attributes}
                              typeDefinition={definition || {}} />
-          <StaticFieldForm ref="staticFieldForm" input={this.props.input} />
+          <StaticFieldForm ref={(staticFieldForm) => { this.staticFieldForm = staticFieldForm; }} input={this.props.input} />
           <InputStaticFields input={this.props.input} />
         </Col>
         <Col md={4}>

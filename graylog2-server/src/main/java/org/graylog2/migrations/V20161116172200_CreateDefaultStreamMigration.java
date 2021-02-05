@@ -1,32 +1,30 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
 import com.google.common.collect.ImmutableMap;
 import org.bson.types.ObjectId;
 import org.graylog2.database.NotFoundException;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.plugin.database.ValidationException;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.streams.StreamImpl;
 import org.graylog2.streams.StreamService;
-import org.graylog2.streams.events.StreamsChangedEvent;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -44,15 +42,12 @@ public class V20161116172200_CreateDefaultStreamMigration extends Migration {
     private static final Logger LOG = LoggerFactory.getLogger(V20161116172200_CreateDefaultStreamMigration.class);
 
     private final StreamService streamService;
-    private final ClusterEventBus clusterEventBus;
     private final IndexSetRegistry indexSetRegistry;
 
     @Inject
     public V20161116172200_CreateDefaultStreamMigration(StreamService streamService,
-                                                        ClusterEventBus clusterEventBus,
                                                         IndexSetRegistry indexSetRegistry) {
         this.streamService = streamService;
-        this.clusterEventBus = clusterEventBus;
         this.indexSetRegistry = indexSetRegistry;
     }
 
@@ -93,7 +88,5 @@ public class V20161116172200_CreateDefaultStreamMigration extends Migration {
         } catch (ValidationException e) {
             LOG.error("Couldn't create default stream! This is a bug!");
         }
-
-        clusterEventBus.post(StreamsChangedEvent.create(stream.getId()));
     }
 }

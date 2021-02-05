@@ -1,9 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { ListGroupItem } from 'react-bootstrap';
 import { DragSource, DropTarget } from 'react-dnd';
 
+import { ListGroupItem } from 'components/graylog';
+
+import Icon from './Icon';
+
+// eslint-disable-next-line import/no-webpack-loader-syntax
 import SortableListItemStyle from '!style!css!components/common/SortableListItem.css';
 
 const ItemTypes = {
@@ -105,23 +125,27 @@ class SortableListItem extends React.Component {
   render() {
     const { content, isDragging, isOver, connectDragSource, connectDropTarget } = this.props;
     const classes = [SortableListItemStyle.listGroupItem];
+
     if (isDragging) {
       classes.push('dragging');
     }
+
     if (isOver) {
       classes.push('over');
     }
 
-    const handle = <span className={SortableListItemStyle.itemHandle}><i className="fa fa-sort" /></span>;
+    const handle = <span className={SortableListItemStyle.itemHandle}><Icon name="sort" /></span>;
 
     const component = (
-      <div className="sortable-list-item">
-        <ListGroupItem className={classes.join(' ')}>
-          <div>
-            {this.props.disableDragging ? null : handle}
-            {content}
-          </div>
-        </ListGroupItem>
+      <div>
+        <div>
+          <ListGroupItem className={classes.join(' ')}>
+            <div>
+              {this.props.disableDragging ? null : handle}
+              {content}
+            </div>
+          </ListGroupItem>
+        </div>
       </div>
     );
 

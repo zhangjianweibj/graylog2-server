@@ -1,17 +1,34 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Row, Col } from 'react-bootstrap';
 
+import { Row, Col } from 'components/graylog';
 import StoreProvider from 'injection/StoreProvider';
-const OutputsStore = StoreProvider.getStore('Outputs');
-const StreamsStore = StoreProvider.getStore('Streams');
-
 import UserNotification from 'util/UserNotification';
 import PermissionsMixin from 'util/PermissionsMixin';
 import Spinner from 'components/common/Spinner';
+
 import OutputList from './OutputList';
 import CreateOutputDropdown from './CreateOutputDropdown';
 import AssignOutputDropdown from './AssignOutputDropdown';
+
+const OutputsStore = StoreProvider.getStore('Outputs');
+const StreamsStore = StoreProvider.getStore('Streams');
 
 const OutputsComponent = createReactClass({
   displayName: 'OutputsComponent',
@@ -26,10 +43,12 @@ const OutputsComponent = createReactClass({
       this.setState({
         outputs: resp.outputs,
       });
+
       if (this.props.streamId) {
         this._fetchAssignableOutputs(resp.outputs);
       }
     };
+
     if (this.props.streamId) {
       OutputsStore.loadForStreamId(this.props.streamId, callback);
     } else {
@@ -53,14 +72,17 @@ const OutputsComponent = createReactClass({
   _handleCreateOutput(data) {
     OutputsStore.save(data, (result) => {
       this.setState({ typeName: 'placeholder' });
+
       if (this.props.streamId) {
         StreamsStore.addOutput(this.props.streamId, result.id, (response) => {
           this._handleUpdate();
+
           return response;
         });
       } else {
         this._handleUpdate();
       }
+
       return result;
     });
   },
@@ -71,6 +93,7 @@ const OutputsComponent = createReactClass({
       const assignableOutputs = resp.outputs
         .filter((output) => { return streamOutputIds.indexOf(output.id) === -1; })
         .sort((output1, output2) => { return output1.title.localeCompare(output2.title); });
+
       this.setState({ assignableOutputs: assignableOutputs });
     });
   },
@@ -78,6 +101,7 @@ const OutputsComponent = createReactClass({
   _handleAssignOutput(outputId) {
     StreamsStore.addOutput(this.props.streamId, outputId, (response) => {
       this._handleUpdate();
+
       return response;
     });
   },
@@ -87,6 +111,7 @@ const OutputsComponent = createReactClass({
       OutputsStore.remove(outputId, (response) => {
         UserNotification.success('Output was terminated.', 'Success');
         this._handleUpdate();
+
         return response;
       });
     }
@@ -97,6 +122,7 @@ const OutputsComponent = createReactClass({
       StreamsStore.removeOutput(streamId, outputId, (response) => {
         UserNotification.success('Output was removed from stream.', 'Success');
         this._handleUpdate();
+
         return response;
       });
     }
@@ -110,15 +136,22 @@ const OutputsComponent = createReactClass({
 
   render() {
     if (this.state.outputs && this.state.types && (!this.props.streamId || this.state.assignableOutputs)) {
-      const permissions = this.props.permissions;
-      const streamId = this.props.streamId;
-      const createOutputDropdown = (this.isPermitted(permissions, ['outputs:create']) ?
-        (<CreateOutputDropdown types={this.state.types} onSubmit={this._handleCreateOutput}
-                              getTypeDefinition={OutputsStore.loadAvailable} streamId={streamId} />) : null);
-      const assignOutputDropdown = (streamId ?
-        (<AssignOutputDropdown ref="assignOutputDropdown" streamId={streamId}
-                              outputs={this.state.assignableOutputs}
-                              onSubmit={this._handleAssignOutput} />) : null);
+      const { permissions } = this.props;
+      const { streamId } = this.props;
+      const createOutputDropdown = (this.isPermitted(permissions, ['outputs:create'])
+        ? (
+          <CreateOutputDropdown types={this.state.types}
+                                onSubmit={this._handleCreateOutput}
+                                getTypeDefinition={OutputsStore.loadAvailable}
+                                streamId={streamId} />
+        ) : null);
+      const assignOutputDropdown = (streamId
+        ? (
+          <AssignOutputDropdown streamId={streamId}
+                                outputs={this.state.assignableOutputs}
+                                onSubmit={this._handleAssignOutput} />
+        ) : null);
+
       return (
         <div className="outputs">
           <Row className="content">
@@ -130,13 +163,18 @@ const OutputsComponent = createReactClass({
             </Col>
           </Row>
 
-          <OutputList ref="outputList" streamId={streamId} outputs={this.state.outputs} permissions={permissions}
-                      getTypeDefinition={OutputsStore.loadAvailable} types={this.state.types}
-                      onRemove={this._removeOutputFromStream} onTerminate={this._removeOutputGlobally}
+          <OutputList streamId={streamId}
+                      outputs={this.state.outputs}
+                      permissions={permissions}
+                      getTypeDefinition={OutputsStore.loadAvailable}
+                      types={this.state.types}
+                      onRemove={this._removeOutputFromStream}
+                      onTerminate={this._removeOutputGlobally}
                       onUpdate={this._handleOutputUpdate} />
         </div>
       );
     }
+
     return <Spinner />;
   },
 });

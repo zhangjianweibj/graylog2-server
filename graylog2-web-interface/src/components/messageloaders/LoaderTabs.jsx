@@ -1,126 +1,133 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
+import * as React from 'react';
 import PropTypes from 'prop-types';
-import React from 'react';
-import createReactClass from 'create-react-class';
-import Reflux from 'reflux';
-import { Tab, Tabs, Col } from 'react-bootstrap';
-import Immutable from 'immutable';
+import * as Immutable from 'immutable';
 
+import { Col, Tab, Tabs } from 'components/graylog';
+import connect from 'stores/connect';
 import StoreProvider from 'injection/StoreProvider';
-const InputsStore = StoreProvider.getStore('Inputs');
-const StreamsStore = StoreProvider.getStore('Streams');
-
 import ActionsProvider from 'injection/ActionsProvider';
-const InputsActions = ActionsProvider.getActions('Inputs');
-
 import MessageShow from 'components/search/MessageShow';
 import MessageLoader from 'components/extractors/MessageLoader';
+
 import RawMessageLoader from './RawMessageLoader';
 import RecentMessageLoader from './RecentMessageLoader';
 
-const LoaderTabs = createReactClass({
-  displayName: 'LoaderTabs',
+const InputsStore = StoreProvider.getStore('Inputs');
+const StreamsStore = StoreProvider.getStore('Streams');
+const InputsActions = ActionsProvider.getActions('Inputs');
 
-  propTypes: {
-    tabs: PropTypes.oneOfType([
-      PropTypes.oneOf(['recent', 'messageId', 'raw']),
-      PropTypes.arrayOf(PropTypes.oneOf(['recent', 'messageId', 'raw'])),
-    ]),
-    messageId: PropTypes.string,
-    index: PropTypes.string,
-    onMessageLoaded: PropTypes.func,
-    selectedInputId: PropTypes.string,
-    customFieldActions: PropTypes.node,
-    disableMessagePreview: PropTypes.bool,
-  },
-
-  mixins: [Reflux.listenTo(InputsStore, '_formatInputs')],
-
-  getDefaultProps() {
-    return {
-      tabs: ['recent', 'messageId'],
-    };
-  },
-
-  getInitialState() {
-    return {
-      activeTab: undefined,
-      message: undefined,
-      inputs: undefined,
-    };
-  },
-
-  componentDidMount() {
-    this.loadData();
-    if (this.props.messageId && this.props.index) {
-      this.refs.messageLoader.submit(this.props.messageId, this.props.index);
-    }
-  },
-
-  onMessageLoaded(message) {
-    this.setState({ message: message });
-    if (this.props.onMessageLoaded) {
-      this.props.onMessageLoaded(message);
-    }
-  },
-
-  TAB_KEYS: {
+class LoaderTabs extends React.Component {
+  TAB_KEYS = {
     recent: 1,
     messageId: 2,
     raw: 3,
-  },
+  };
 
-  _formatInputs(state) {
-    const inputs = InputsStore.inputsAsMap(state.inputs);
-    this.setState({ inputs: Immutable.Map(inputs) });
-  },
+  constructor(props) {
+    super(props);
 
-  loadData() {
+    this.state = {
+      activeTab: undefined,
+      message: undefined,
+    };
+  }
+
+  componentDidMount() {
+    this.loadData();
+    const { messageId, index } = this.props;
+
+    if (messageId && index) {
+      this.messageLoader.submit(messageId, index);
+    }
+  }
+
+  onMessageLoaded = (message) => {
+    this.setState({ message });
+    const { onMessageLoaded } = this.props;
+
+    if (onMessageLoaded) {
+      onMessageLoaded(message);
+    }
+  };
+
+  loadData = () => {
     InputsActions.list();
+
     StreamsStore.listStreams().then((response) => {
       const streams = {};
+
       response.forEach((stream) => {
         streams[stream.id] = stream;
       });
+
       this.setState({ streams: Immutable.Map(streams) });
     });
-  },
+  };
 
-  _isTabVisible(tabKey) {
-    return this.props.tabs === tabKey || this.props.tabs.indexOf(tabKey) !== -1;
-  },
+  _isTabVisible = (tabKey) => {
+    const { tabs } = this.props;
 
-  _getActiveTab() {
-    if (this.state.activeTab) {
-      return this.state.activeTab;
+    return tabs === tabKey || tabs.indexOf(tabKey) !== -1;
+  };
+
+  _getActiveTab = () => {
+    const { activeTab } = this.state;
+
+    if (activeTab) {
+      return activeTab;
     }
 
-    if (this._isTabVisible('messageId') && this.props.messageId && this.props.index) {
+    const { messageId, index } = this.props;
+
+    if (this._isTabVisible('messageId') && messageId && index) {
       return this.TAB_KEYS.messageId;
     }
 
     if (this._isTabVisible('recent')) {
       return this.TAB_KEYS.recent;
     }
+
     if (this._isTabVisible('messageId')) {
       return this.TAB_KEYS.messageId;
     }
-    return this.TAB_KEYS.raw;
-  },
 
-  _changeActiveTab(selectedTab) {
-    if (this.state.activeTab !== selectedTab) {
+    return this.TAB_KEYS.raw;
+  };
+
+  _changeActiveTab = (selectedTab) => {
+    const { activeTab } = this.state;
+
+    if (activeTab !== selectedTab) {
       this.setState({ activeTab: selectedTab, message: undefined });
     }
-  },
+  };
 
-  _formatMessageLoaders() {
+  _formatMessageLoaders = () => {
     const messageLoaders = [];
 
     if (this._isTabVisible('recent')) {
+      const { inputs, selectedInputId } = this.props;
+
       messageLoaders.push(
         <Tab key="recent" eventKey={this.TAB_KEYS.recent} title="Recent Message" style={{ marginBottom: 10 }}>
-          <RecentMessageLoader inputs={this.state.inputs}
-                               selectedInputId={this.props.selectedInputId}
+          <RecentMessageLoader inputs={inputs}
+                               selectedInputId={selectedInputId}
                                onMessageLoaded={this.onMessageLoaded} />
         </Tab>,
       );
@@ -133,7 +140,7 @@ const LoaderTabs = createReactClass({
             Please provide the id and index of the message that you want to load in this form:
           </div>
 
-          <MessageLoader ref="messageLoader" onMessageLoaded={this.onMessageLoaded} hidden={false} hideText />
+          <MessageLoader ref={(messageLoader) => { this.messageLoader = messageLoader; }} onMessageLoaded={this.onMessageLoaded} hidden={false} hideText />
         </Tab>,
       );
     }
@@ -151,22 +158,21 @@ const LoaderTabs = createReactClass({
     }
 
     return messageLoaders;
-  },
+  };
 
   render() {
-    let displayMessage;
-    if (this.state.message && this.state.inputs && !this.props.disableMessagePreview) {
-      displayMessage = (
+    const { streams, message } = this.state;
+    const { customFieldActions, inputs } = this.props;
+    const displayMessage = message && inputs
+      ? (
         <Col md={12}>
-          <MessageShow message={this.state.message} inputs={this.state.inputs}
-                       streams={this.state.streams}
-                       disableTestAgainstStream
-                       disableSurroundingSearch
-                       disableFieldActions={!this.props.customFieldActions}
-                       customFieldActions={this.props.customFieldActions} />
+          <MessageShow message={message}
+                       inputs={inputs}
+                       streams={streams}
+                       customFieldActions={customFieldActions} />
         </Col>
-      );
-    }
+      )
+      : null;
 
     return (
       <div>
@@ -176,7 +182,34 @@ const LoaderTabs = createReactClass({
         {displayMessage}
       </div>
     );
-  },
-});
+  }
+}
 
-export default LoaderTabs;
+LoaderTabs.propTypes = {
+  tabs: PropTypes.oneOfType([
+    PropTypes.oneOf(['recent', 'messageId', 'raw']),
+    PropTypes.arrayOf(PropTypes.oneOf(['recent', 'messageId', 'raw'])),
+  ]),
+  messageId: PropTypes.string,
+  index: PropTypes.string,
+  onMessageLoaded: PropTypes.func,
+  selectedInputId: PropTypes.string,
+  customFieldActions: PropTypes.node,
+  inputs: PropTypes.object,
+};
+
+LoaderTabs.defaultProps = {
+  tabs: ['recent', 'messageId'],
+  index: undefined,
+  messageId: undefined,
+  onMessageLoaded: undefined,
+  selectedInputId: undefined,
+  customFieldActions: undefined,
+  inputs: undefined,
+};
+
+export default connect(
+  LoaderTabs,
+  { inputs: InputsStore },
+  ({ inputs: { inputs } }) => ({ inputs: inputs ? Immutable.Map(InputsStore.inputsAsMap(inputs)) : undefined }),
+);

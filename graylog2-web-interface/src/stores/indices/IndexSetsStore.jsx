@@ -1,12 +1,27 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import Reflux from 'reflux';
 
 import ApiRoutes from 'routing/ApiRoutes';
 import fetch from 'logic/rest/FetchProvider';
-
 import URLUtils from 'util/URLUtils';
 import UserNotification from 'util/UserNotification';
-
 import ActionsProvider from 'injection/ActionsProvider';
+
 const IndexSetsActions = ActionsProvider.getActions('IndexSets');
 
 const IndexSetsStore = Reflux.createStore({
@@ -15,9 +30,10 @@ const IndexSetsStore = Reflux.createStore({
   list(stats) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.list(stats).url);
     const promise = fetch('GET', url);
+
     promise
       .then(
-        response => this.trigger({
+        (response) => this.trigger({
           indexSetsCount: response.total,
           indexSets: response.index_sets,
           indexSetStats: response.stats,
@@ -25,7 +41,8 @@ const IndexSetsStore = Reflux.createStore({
         (error) => {
           UserNotification.error(`Fetching index sets list failed: ${error.message}`,
             'Could not retrieve index sets.');
-        });
+        },
+      );
 
     IndexSetsActions.list.promise(promise);
   },
@@ -33,9 +50,10 @@ const IndexSetsStore = Reflux.createStore({
   listPaginated(skip, limit, stats) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.listPaginated(skip, limit, stats).url);
     const promise = fetch('GET', url);
+
     promise
       .then(
-        response => this.trigger({
+        (response) => this.trigger({
           indexSetsCount: response.total,
           indexSets: response.index_sets,
           indexSetStats: response.stats,
@@ -43,7 +61,8 @@ const IndexSetsStore = Reflux.createStore({
         (error) => {
           UserNotification.error(`Fetching index sets list failed: ${this._errorMessage(error)}`,
             'Could not retrieve index sets.');
-        });
+        },
+      );
 
     IndexSetsActions.listPaginated.promise(promise);
   },
@@ -51,9 +70,11 @@ const IndexSetsStore = Reflux.createStore({
   get(indexSetId) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.get(indexSetId).url);
     const promise = fetch('GET', url);
+
     promise.then(
       (response) => {
         this.trigger({ indexSet: response });
+
         return response;
       },
       (error) => {
@@ -67,10 +88,12 @@ const IndexSetsStore = Reflux.createStore({
   update(indexSet) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.get(indexSet.id).url);
     const promise = fetch('PUT', url, indexSet);
+
     promise.then(
       (response) => {
         UserNotification.success(`Successfully updated index set '${indexSet.title}'`, 'Success');
         this.trigger({ indexSet: response });
+
         return response;
       },
       (error) => {
@@ -84,10 +107,12 @@ const IndexSetsStore = Reflux.createStore({
   create(indexSet) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.create().url);
     const promise = fetch('POST', url, indexSet);
+
     promise.then(
       (response) => {
         UserNotification.success(`Successfully created index set '${indexSet.title}'`, 'Success');
         this.trigger({ indexSet: response });
+
         return response;
       },
       (error) => {
@@ -101,6 +126,7 @@ const IndexSetsStore = Reflux.createStore({
   delete(indexSet, deleteIndices) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.delete(indexSet.id, deleteIndices).url);
     const promise = fetch('DELETE', url);
+
     promise.then(
       () => {
         UserNotification.success(`Successfully deleted index set '${indexSet.title}'`, 'Success');
@@ -116,6 +142,7 @@ const IndexSetsStore = Reflux.createStore({
   setDefault(indexSet) {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.setDefault(indexSet.id).url);
     const promise = fetch('PUT', url);
+
     promise.then(
       () => {
         UserNotification.success(`Successfully set index set '${indexSet.title}' as default`, 'Success');
@@ -131,19 +158,21 @@ const IndexSetsStore = Reflux.createStore({
   stats() {
     const url = URLUtils.qualifyUrl(ApiRoutes.IndexSetsApiController.stats().url);
     const promise = fetch('GET', url);
+
     promise
       .then(
-        response => this.trigger({
+        (response) => this.trigger({
           globalIndexSetStats: {
             indices: response.indices,
             documents: response.documents,
             size: response.size,
-          }
+          },
         }),
         (error) => {
           UserNotification.error(`Fetching global index stats failed: ${error.message}`,
             'Could not retrieve global index stats.');
-        });
+        },
+      );
 
     IndexSetsActions.stats.promise(promise);
   },

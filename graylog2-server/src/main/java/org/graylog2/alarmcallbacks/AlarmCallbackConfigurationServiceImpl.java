@@ -1,22 +1,22 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.alarmcallbacks;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.mongodb.DBCollection;
 import org.bson.types.ObjectId;
@@ -50,7 +50,9 @@ public class AlarmCallbackConfigurationServiceImpl implements AlarmCallbackConfi
 
     @Override
     public List<AlarmCallbackConfiguration> getForStreamId(String streamId) {
-        return this.toAbstractListType(coll.find(DBQuery.is("stream_id", streamId)).toArray());
+        try (DBCursor<AlarmCallbackConfigurationImpl> dbCursor = coll.find(DBQuery.is("stream_id", streamId))) {
+            return ImmutableList.copyOf((Iterable<AlarmCallbackConfigurationImpl>) dbCursor);
+        }
     }
 
     @Override
@@ -77,13 +79,14 @@ public class AlarmCallbackConfigurationServiceImpl implements AlarmCallbackConfi
     public Map<String, Long> countPerType() {
         final HashMap<String, Long> result = Maps.newHashMap();
 
-        final DBCursor<AlarmCallbackConfigurationImpl> avs = coll.find();
-        for (AlarmCallbackConfigurationImpl av : avs) {
-            Long count = result.get(av.getType());
-            if (count == null) {
-                count = 0L;
+        try(DBCursor<AlarmCallbackConfigurationImpl> avs = coll.find()) {
+            for (AlarmCallbackConfigurationImpl av : avs) {
+                Long count = result.get(av.getType());
+                if (count == null) {
+                    count = 0L;
+                }
+                result.put(av.getType(), count + 1);
             }
-            result.put(av.getType(), count + 1);
         }
 
         return result;
@@ -97,13 +100,6 @@ public class AlarmCallbackConfigurationServiceImpl implements AlarmCallbackConfi
     @Override
     public int destroy(AlarmCallbackConfiguration model) {
         return coll.removeById(model.getId()).getN();
-    }
-
-    private List<AlarmCallbackConfiguration> toAbstractListType(List<AlarmCallbackConfigurationImpl> callbacks) {
-        final List<AlarmCallbackConfiguration> result = Lists.newArrayList();
-        result.addAll(callbacks);
-
-        return result;
     }
 
     private AlarmCallbackConfigurationImpl implOrFail(AlarmCallbackConfiguration callback) {

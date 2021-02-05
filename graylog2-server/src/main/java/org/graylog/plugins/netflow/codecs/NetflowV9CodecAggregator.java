@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.netflow.codecs;
 
@@ -135,6 +135,7 @@ public class NetflowV9CodecAggregator implements RemoteAddressCodecAggregator {
             // this list of flows to return in the result
             // Using ByteBuf here to enable de-duplication with the hash set.
             final Set<ByteBuf> packetsToSend = new HashSet<>();
+            final Set<Integer> bufferedTemplateIds = new HashSet<>();
 
             // if we have new templates, figure out which buffered packets template requirements are now satisfied
             if (!rawNetFlowV9Packet.templates().isEmpty() || rawNetFlowV9Packet.optionTemplate() != null) {
@@ -155,6 +156,7 @@ public class NetflowV9CodecAggregator implements RemoteAddressCodecAggregator {
                         // are all templates the packet references there?
                         if (knownTemplateIds.containsAll(previousPacket.getUsedTemplates())) {
                             packetsToSend.add(Unpooled.wrappedBuffer(previousPacket.getBytes()));
+                            bufferedTemplateIds.addAll(previousPacket.getUsedTemplates());
                             addedPackets++;
                         } else {
                             tempQueue.add(previousPacket);
@@ -173,8 +175,9 @@ public class NetflowV9CodecAggregator implements RemoteAddressCodecAggregator {
             // the list of template keys to return in the result
             final Set<TemplateKey> templates = new HashSet<>();
 
-            // find out which templates we need to include for the current packet
-            for (int templateId : rawNetFlowV9Packet.usedTemplates()) {
+            // find out which templates we need to include for the buffered and current packets
+            bufferedTemplateIds.addAll(rawNetFlowV9Packet.usedTemplates());
+            for (int templateId : bufferedTemplateIds) {
                 final TemplateKey templateKey = new TemplateKey(remoteAddress, sourceId, templateId);
                 final TemplateBytes template = templateCache.getIfPresent(templateKey);
 
@@ -246,7 +249,7 @@ public class NetflowV9CodecAggregator implements RemoteAddressCodecAggregator {
         }
     }
 
-    private class TemplateBytes {
+    private static class TemplateBytes {
         private final byte[] bytes;
         private final boolean optionTemplate;
 

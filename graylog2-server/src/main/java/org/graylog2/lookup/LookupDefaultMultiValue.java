@@ -1,26 +1,26 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.lookup;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.google.auto.value.AutoValue;
+import org.graylog2.jackson.TypeReferences;
 
 import javax.annotation.Nullable;
 import java.util.Locale;
@@ -32,12 +32,15 @@ import static java.util.Objects.requireNonNull;
 @JsonDeserialize(builder = AutoValue_LookupDefaultSingleValue.Builder.class)
 @AutoValue
 public abstract class LookupDefaultMultiValue implements LookupDefaultValue {
+    @Override
     @JsonProperty(FIELD_VALUE_STRING)
     public abstract String valueString();
 
+    @Override
     @JsonProperty(FIELD_VALUE_TYPE)
     public abstract LookupDefaultValue.Type valueType();
 
+    @Override
     @JsonProperty(FIELD_VALUE)
     @Nullable
     public abstract Map<Object, Object> value();
@@ -55,8 +58,7 @@ public abstract class LookupDefaultMultiValue implements LookupDefaultValue {
         try {
             switch (valueType) {
                 case OBJECT:
-                    value = OBJECT_MAPPER.readValue(valueString, new TypeReference<Map<Object, Object>>() {
-                    });
+                    value = OBJECT_MAPPER.readValue(valueString, TypeReferences.MAP_OBJECT_OBJECT);
                     break;
                 case NULL:
                     value = null;

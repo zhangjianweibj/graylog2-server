@@ -8,9 +8,9 @@ Simple page header with only a title and description:
 Experimental page header with description, support message, and action. Notice
 that there is no border around the header, as the `subpage` prop is set:
 ```js
-const Button = require('react-bootstrap').Button;
+import { Button } from 'components/graylog';
 
-<PageHeader title="Here goes the page title" experimental subpage>
+<PageHeader title="Here goes the page title" lifecycle="experimental" subpage>
   <span>This is a page description</span>
   <span>This is a support message</span>
   <span><Button bsStyle="info">Action</Button></span>

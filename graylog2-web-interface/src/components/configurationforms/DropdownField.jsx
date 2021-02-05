@@ -1,8 +1,23 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import $ from 'jquery';
-
 import PropTypes from 'prop-types';
-
 import React from 'react';
+
 import FieldHelpers from 'components/configurationforms/FieldHelpers';
 
 class DropdownField extends React.Component {
@@ -28,7 +43,7 @@ class DropdownField extends React.Component {
     value: this.props.value,
   };
 
-  componentWillReceiveProps(props) {
+  UNSAFE_componentWillReceiveProps(props) {
     this.setState(props);
   }
 
@@ -44,12 +59,15 @@ class DropdownField extends React.Component {
   };
 
   render() {
-    const field = this.state.field;
+    const { field } = this.state;
     const options = $.map(field.additional_info.values, this._formatOption);
+
     if (this.props.addPlaceholder) {
       options.unshift(this._formatOption(`Select ${field.human_name || this.state.title}`, '', true));
     }
-    const typeName = this.state.typeName;
+
+    const { typeName } = this.state;
+
     return (
       <div className="form-group">
         <label htmlFor={`${typeName}-${field.title}`}>
@@ -58,9 +76,13 @@ class DropdownField extends React.Component {
           {FieldHelpers.optionalMarker(field)}
         </label>
 
-        <select id={field.title} value={this.state.value}
-                className="input-xlarge form-control" onChange={this.handleChange}
-                autoFocus={this.props.autoFocus} disabled={this.props.disabled} required={!field.is_optional}>
+        <select id={field.title}
+                value={this.state.value}
+                className="input-xlarge form-control"
+                onChange={this.handleChange}
+                autoFocus={this.props.autoFocus}
+                disabled={this.props.disabled}
+                required={!field.is_optional}>
           {options}
         </select>
         <p className="help-block">{field.description}</p>

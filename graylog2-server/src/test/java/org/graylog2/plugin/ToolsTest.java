@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin;
 
@@ -25,7 +25,6 @@ import org.junit.Test;
 
 import java.io.EOFException;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -52,15 +51,15 @@ public class ToolsTest {
         final URI httpsUriWithoutPort = new URI("https://example.com");
         final URI uriWithUnknownSchemeAndWithoutPort = new URI("foobar://example.com");
 
-        assertEquals(Tools.getUriWithPort(uriWithPort, 1).getPort(), 12345);
-        assertEquals(Tools.getUriWithPort(httpUriWithoutPort, 1).getPort(), 80);
-        assertEquals(Tools.getUriWithPort(httpsUriWithoutPort, 1).getPort(), 443);
-        assertEquals(Tools.getUriWithPort(uriWithUnknownSchemeAndWithoutPort, 1).getPort(), 1);
+        assertEquals(12345, Tools.getUriWithPort(uriWithPort, 1).getPort());
+        assertEquals(80, Tools.getUriWithPort(httpUriWithoutPort, 1).getPort());
+        assertEquals(443, Tools.getUriWithPort(httpsUriWithoutPort, 1).getPort());
+        assertEquals(1, Tools.getUriWithPort(uriWithUnknownSchemeAndWithoutPort, 1).getPort());
     }
 
     @Test
     public void testGetUriWithScheme() throws Exception {
-        assertEquals(Tools.getUriWithScheme(new URI("http://example.com"), "gopher").getScheme(), "gopher");
+        assertEquals("gopher", Tools.getUriWithScheme(new URI("http://example.com"), "gopher").getScheme());
         assertNull(Tools.getUriWithScheme(new URI("http://example.com"), null).getScheme());
         assertNull(Tools.getUriWithScheme(null, "http"));
     }
@@ -94,18 +93,18 @@ public class ToolsTest {
 
     @Test
     public void testSyslogLevelToReadable() {
-        assertEquals(Tools.syslogLevelToReadable(1337), "Invalid");
-        assertEquals(Tools.syslogLevelToReadable(0), "Emergency");
-        assertEquals(Tools.syslogLevelToReadable(2), "Critical");
-        assertEquals(Tools.syslogLevelToReadable(6), "Informational");
+        assertEquals("Invalid", Tools.syslogLevelToReadable(1337));
+        assertEquals("Emergency", Tools.syslogLevelToReadable(0));
+        assertEquals("Critical", Tools.syslogLevelToReadable(2));
+        assertEquals("Informational", Tools.syslogLevelToReadable(6));
     }
 
     @Test
     public void testSyslogFacilityToReadable() {
-        assertEquals(Tools.syslogFacilityToReadable(9001), "Unknown");
-        assertEquals(Tools.syslogFacilityToReadable(0), "kernel");
-        assertEquals(Tools.syslogFacilityToReadable(11), "FTP");
-        assertEquals(Tools.syslogFacilityToReadable(22), "local6");
+        assertEquals("Unknown", Tools.syslogFacilityToReadable(9001));
+        assertEquals("kernel", Tools.syslogFacilityToReadable(0));
+        assertEquals("FTP", Tools.syslogFacilityToReadable(11));
+        assertEquals("local6", Tools.syslogFacilityToReadable(22));
     }
 
     @Test
@@ -247,22 +246,22 @@ public class ToolsTest {
 
     @Test
     public void testGetNumberForDifferentFormats() {
-        assertEquals(Tools.getNumber(1, null).intValue(), 1);
-        assertEquals(Tools.getNumber(1, null).doubleValue(), 1.0, 0.0);
+        assertEquals(1, Tools.getNumber(1, null).intValue(), 1);
+        assertEquals(1.0, Tools.getNumber(1, null).doubleValue(), 0.0);
 
-        assertEquals(Tools.getNumber(42.23, null).intValue(), 42);
-        assertEquals(Tools.getNumber(42.23, null).doubleValue(), 42.23, 0.0);
+        assertEquals(42, Tools.getNumber(42.23, null).intValue());
+        assertEquals(42.23, Tools.getNumber(42.23, null).doubleValue(), 0.0);
 
-        assertEquals(Tools.getNumber("17", null).intValue(), 17);
-        assertEquals(Tools.getNumber("17", null).doubleValue(), 17.0, 0.0);
+        assertEquals(17, Tools.getNumber("17", null).intValue());
+        assertEquals(17.0, Tools.getNumber("17", null).doubleValue(), 0.0);
 
-        assertEquals(Tools.getNumber("23.42", null).intValue(), 23);
-        assertEquals(Tools.getNumber("23.42", null).doubleValue(), 23.42, 0.0);
+        assertEquals(23, Tools.getNumber("23.42", null).intValue());
+        assertEquals(23.42, Tools.getNumber("23.42", null).doubleValue(), 0.0);
 
         assertNull(Tools.getNumber(null, null));
         assertNull(Tools.getNumber(null, null));
-        assertEquals(Tools.getNumber(null, 1).intValue(), 1);
-        assertEquals(Tools.getNumber(null, 1).doubleValue(), 1.0, 0.0);
+        assertEquals(1, Tools.getNumber(null, 1).intValue());
+        assertEquals(1.0, Tools.getNumber(null, 1).doubleValue(), 0.0);
     }
 
     @Test

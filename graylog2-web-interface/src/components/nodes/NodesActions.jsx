@@ -1,17 +1,32 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Button, DropdownButton, MenuItem } from 'react-bootstrap';
 import URI from 'urijs';
 
+import { LinkContainer } from 'components/graylog/router';
+import { DropdownButton, DropdownSubmenu, MenuItem, Button } from 'components/graylog';
 import { ExternalLinkButton, IfPermitted } from 'components/common';
-
 import StoreProvider from 'injection/StoreProvider';
+import Routes from 'routing/Routes';
+
 const SystemProcessingStore = StoreProvider.getStore('SystemProcessing');
 const SystemLoadBalancerStore = StoreProvider.getStore('SystemLoadBalancer');
 const SystemShutdownStore = StoreProvider.getStore('SystemShutdown');
-
-import Routes from 'routing/Routes';
 
 class NodesActions extends React.Component {
   static propTypes = {
@@ -45,6 +60,7 @@ class NodesActions extends React.Component {
 
   render() {
     const apiBrowserURI = new URI(`${this.props.node.transport_address}/api-browser`).normalizePathname().toString();
+
     return (
       <div className="item-actions">
         <LinkContainer to={Routes.SYSTEM.NODES.SHOW(this.props.node.node_id)}>
@@ -67,13 +83,10 @@ class NodesActions extends React.Component {
           </IfPermitted>
 
           <IfPermitted permissions="lbstatus:change">
-            <li className="dropdown-submenu left-submenu">
-              <a href="#">Override LB status</a>
-              <ul className="dropdown-menu">
-                <MenuItem onSelect={this._changeLBStatus('ALIVE')}>ALIVE</MenuItem>
-                <MenuItem onSelect={this._changeLBStatus('DEAD')}>DEAD</MenuItem>
-              </ul>
-            </li>
+            <DropdownSubmenu title="Override LB status" left>
+              <MenuItem onSelect={this._changeLBStatus('ALIVE')}>ALIVE</MenuItem>
+              <MenuItem onSelect={this._changeLBStatus('DEAD')}>DEAD</MenuItem>
+            </DropdownSubmenu>
           </IfPermitted>
 
           <IfPermitted permissions="node:shutdown">
@@ -94,6 +107,11 @@ class NodesActions extends React.Component {
           <IfPermitted permissions="threads:dump">
             <LinkContainer to={Routes.SYSTEM.THREADDUMP(this.props.node.node_id)}>
               <MenuItem>Get thread dump</MenuItem>
+            </LinkContainer>
+          </IfPermitted>
+          <IfPermitted permissions="processbuffer:dump">
+            <LinkContainer to={Routes.SYSTEM.PROCESSBUFFERDUMP(this.props.node.node_id)}>
+              <MenuItem>Get process-buffer dump</MenuItem>
             </LinkContainer>
           </IfPermitted>
         </DropdownButton>

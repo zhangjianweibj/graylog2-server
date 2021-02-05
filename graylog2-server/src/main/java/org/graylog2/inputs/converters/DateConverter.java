@@ -1,24 +1,23 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.converters;
 
 import org.graylog2.ConfigurationException;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.joda.time.YearMonth;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -29,8 +28,6 @@ import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Map;
 
-import static com.google.common.base.MoreObjects.firstNonNull;
-import static com.google.common.base.Strings.emptyToNull;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 public class DateConverter extends AbstractDateConverter {
@@ -39,6 +36,7 @@ public class DateConverter extends AbstractDateConverter {
 
     private final String dateFormat;
     private final Locale locale;
+    private final boolean containsTimeZone;
 
     public DateConverter(Map<String, Object> config) throws ConfigurationException {
         super(Type.DATE, config);
@@ -49,6 +47,7 @@ public class DateConverter extends AbstractDateConverter {
 
         this.dateFormat = ((String) config.get("date_format")).trim();
         this.locale = buildLocale(config.get("locale"));
+        this.containsTimeZone = dateFormat.contains("Z") || dateFormat.contains("z");
     }
 
     private static Locale buildLocale(Object languageTag) {
@@ -70,12 +69,21 @@ public class DateConverter extends AbstractDateConverter {
             return null;
         }
 
-        LOG.debug("Trying to parse date <{}> with pattern <{}> and timezone <{}>.", value, dateFormat, timeZone);
-        final DateTimeFormatter formatter = DateTimeFormat
-                .forPattern(dateFormat)
-                .withLocale(locale)
-                .withDefaultYear(YearMonth.now(timeZone).getYear())
-                .withZone(timeZone);
+        LOG.debug("Trying to parse date <{}> with pattern <{}>, locale <{}>, and timezone <{}>.", value, dateFormat, locale, timeZone);
+        final DateTimeFormatter formatter;
+        if (containsTimeZone) {
+            formatter = DateTimeFormat
+                    .forPattern(dateFormat)
+                    .withDefaultYear(YearMonth.now(timeZone).getYear())
+                    .withLocale(locale);
+        } else {
+            formatter = DateTimeFormat
+                    .forPattern(dateFormat)
+                    .withDefaultYear(YearMonth.now(timeZone).getYear())
+                    .withLocale(locale)
+                    .withZone(timeZone);
+        }
+
         return DateTime.parse(value, formatter);
     }
 }

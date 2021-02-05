@@ -1,22 +1,21 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.rest;
 
-import com.google.common.eventbus.EventBus;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -26,15 +25,15 @@ import org.graylog.plugins.pipelineprocessor.ast.Rule;
 import org.graylog.plugins.pipelineprocessor.ast.functions.Function;
 import org.graylog.plugins.pipelineprocessor.audit.PipelineProcessorAuditEventTypes;
 import org.graylog.plugins.pipelineprocessor.db.RuleDao;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigDto;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigService;
 import org.graylog.plugins.pipelineprocessor.db.RuleService;
-import org.graylog.plugins.pipelineprocessor.events.RulesChangedEvent;
 import org.graylog.plugins.pipelineprocessor.parser.FunctionRegistry;
 import org.graylog.plugins.pipelineprocessor.parser.ParseException;
 import org.graylog.plugins.pipelineprocessor.parser.PipelineRuleParser;
 import org.graylog2.audit.jersey.AuditEvent;
 import org.graylog2.audit.jersey.NoAuditEvent;
 import org.graylog2.database.NotFoundException;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.plugin.rest.PluginRestResource;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.joda.time.DateTime;
@@ -68,18 +67,18 @@ public class RuleResource extends RestResource implements PluginRestResource {
     private static final Logger log = LoggerFactory.getLogger(RuleResource.class);
 
     private final RuleService ruleService;
+    private final RuleMetricsConfigService ruleMetricsConfigService;
     private final PipelineRuleParser pipelineRuleParser;
-    private final EventBus clusterBus;
     private final FunctionRegistry functionRegistry;
 
     @Inject
     public RuleResource(RuleService ruleService,
+                        RuleMetricsConfigService ruleMetricsConfigService,
                         PipelineRuleParser pipelineRuleParser,
-                        ClusterEventBus clusterBus,
                         FunctionRegistry functionRegistry) {
         this.ruleService = ruleService;
+        this.ruleMetricsConfigService = ruleMetricsConfigService;
         this.pipelineRuleParser = pipelineRuleParser;
-        this.clusterBus = clusterBus;
         this.functionRegistry = functionRegistry;
     }
 
@@ -104,8 +103,7 @@ public class RuleResource extends RestResource implements PluginRestResource {
                 .modifiedAt(now)
                 .build();
         final RuleDao save = ruleService.save(newRuleSource);
-        // TODO determine which pipelines could change because of this new rule (there could be pipelines referring to a previously unresolved rule)
-        clusterBus.post(RulesChangedEvent.updatedRuleId(save.id()));
+
         log.debug("Created new rule {}", save);
         return RuleSource.fromDao(pipelineRuleParser, save);
     }
@@ -186,9 +184,6 @@ public class RuleResource extends RestResource implements PluginRestResource {
                 .build();
         final RuleDao savedRule = ruleService.save(toSave);
 
-        // TODO determine which pipelines could change because of this updated rule
-        clusterBus.post(RulesChangedEvent.updatedRuleId(savedRule.id()));
-
         return RuleSource.fromDao(pipelineRuleParser, savedRule);
     }
 
@@ -200,9 +195,6 @@ public class RuleResource extends RestResource implements PluginRestResource {
         checkPermission(PipelineRestPermissions.PIPELINE_RULE_DELETE, id);
         ruleService.load(id);
         ruleService.delete(id);
-
-        // TODO determine which pipelines could change because of this deleted rule, causing them to recompile
-        clusterBus.post(RulesChangedEvent.deletedRuleId(id));
     }
 
 
@@ -215,4 +207,18 @@ public class RuleResource extends RestResource implements PluginRestResource {
                 .collect(Collectors.toList());
     }
 
+    @ApiOperation("Get rule metrics configuration")
+    @Path("/config/metrics")
+    @GET
+    public RuleMetricsConfigDto metricsConfig() {
+        return ruleMetricsConfigService.get();
+    }
+
+    @ApiOperation("Update rule metrics configuration")
+    @Path("/config/metrics")
+    @PUT
+    @AuditEvent(type = PipelineProcessorAuditEventTypes.RULE_METRICS_UPDATE)
+    public RuleMetricsConfigDto updateMetricsConfig(RuleMetricsConfigDto config) {
+        return ruleMetricsConfigService.save(config);
+    }
 }

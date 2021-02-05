@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.transports.netty;
 
@@ -22,7 +22,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -63,7 +63,7 @@ public class HttpHandler extends SimpleChannelInboundHandler<HttpRequest> {
 
             // send on to raw message handler
             writeResponse(channel, keepAlive, httpRequestVersion, HttpResponseStatus.ACCEPTED, origin);
-            ctx.fireChannelRead(buffer);
+            ctx.fireChannelRead(buffer.retain());
         } else {
             writeResponse(channel, keepAlive, httpRequestVersion, HttpResponseStatus.NOT_FOUND, origin);
         }
@@ -74,7 +74,7 @@ public class HttpHandler extends SimpleChannelInboundHandler<HttpRequest> {
                                HttpVersion httpRequestVersion,
                                HttpResponseStatus status,
                                String origin) {
-        final HttpResponse response = new DefaultHttpResponse(httpRequestVersion, status);
+        final HttpResponse response = new DefaultFullHttpResponse(httpRequestVersion, status);
 
         response.headers().set(HttpHeaderNames.CONTENT_LENGTH, 0);
         response.headers().set(HttpHeaderNames.CONNECTION, keepAlive ? HttpHeaderValues.KEEP_ALIVE : HttpHeaderValues.CLOSE);
@@ -87,8 +87,6 @@ public class HttpHandler extends SimpleChannelInboundHandler<HttpRequest> {
 
         final ChannelFuture channelFuture = channel.writeAndFlush(response);
 
-        if (!keepAlive) {
-            channelFuture.addListener(ChannelFutureListener.CLOSE);
-        }
+        channelFuture.addListener(keepAlive ? ChannelFutureListener.CLOSE_ON_FAILURE : ChannelFutureListener.CLOSE);
     }
 }

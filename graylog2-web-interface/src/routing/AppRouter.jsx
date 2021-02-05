@@ -1,175 +1,318 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
-import { IndexRoute, Redirect, Router, Route } from 'react-router';
-import { PluginStore } from 'graylog-web-plugin/plugin';
+import { Redirect, Router, Route, Switch } from 'react-router-dom';
 
 import App from 'routing/App';
-import AppWithSearchBar from 'routing/AppWithSearchBar';
-import AppWithoutSearchBar from 'routing/AppWithoutSearchBar';
-import AppWithGlobalNotifications from 'routing/AppWithGlobalNotifications';
+import PageContentLayout from 'components/layout/PageContentLayout';
 import history from 'util/History';
-import URLUtils from 'util/URLUtils';
-
 import Routes from 'routing/Routes';
+import { appPrefixed } from 'util/URLUtils';
+import {
+  AlertConditionsPage,
+  AlertNotificationsPage,
+  AlertsPage,
+  AuthenticationCreatePage,
+  AuthenticationBackendCreatePage,
+  AuthenticationBackendDetailsPage,
+  AuthenticationBackendEditPage,
+  AuthenticationOverviewPage,
+  AuthenticationPage,
+  AuthenticatorsPage,
+  AuthenticatorsEditPage,
+  ConfigurationsPage,
+  ContentPacksPage,
+  CreateContentPackPage,
+  CreateEventDefinitionPage,
+  CreateEventNotificationPage,
+  CreateExtractorsPage,
+  DelegatedSearchPage,
+  EditAlertConditionPage,
+  EditEventDefinitionPage,
+  EditEventNotificationPage,
+  EditContentPackPage,
+  EditExtractorsPage,
+  EnterprisePage,
+  EventDefinitionsPage,
+  EventNotificationsPage,
+  EventsPage,
+  ExportExtractorsPage,
+  ExtractorsPage,
+  GettingStartedPage,
+  GrokPatternsPage,
+  ImportExtractorsPage,
+  IndexerFailuresPage,
+  IndexSetConfigurationPage,
+  IndexSetCreationPage,
+  IndexSetPage,
+  IndicesPage,
+  InputsPage,
+  LoggersPage,
+  LUTCachesPage,
+  LUTDataAdaptersPage,
+  LUTTablesPage,
+  NewAlertConditionPage,
+  NewAlertNotificationPage,
+  NodeInputsPage,
+  NodesPage,
+  NotFoundPage,
+  PipelineDetailsPage,
+  PipelinesOverviewPage,
+  ProcessBufferDumpPage,
+  RoleDetailsPage,
+  RoleEditPage,
+  RolesOverviewPage,
+  RuleDetailsPage,
+  RulesPage,
+  ShowAlertPage,
+  ShowContentPackPage,
+  ShowEventNotificationPage,
+  ShowMessagePage,
+  ShowMetricsPage,
+  ShowNodePage,
+  SidecarAdministrationPage,
+  SidecarConfigurationPage,
+  SidecarEditCollectorPage,
+  SidecarEditConfigurationPage,
+  SidecarNewCollectorPage,
+  SidecarNewConfigurationPage,
+  SidecarsPage,
+  SidecarStatusPage,
+  SimulatorPage,
+  StartPage,
+  StreamEditPage,
+  StreamOutputsPage,
+  StreamsPage,
+  SystemOutputsPage,
+  SystemOverviewPage,
+  ThreadDumpPage,
+  UserDetailsPage,
+  UserCreatePage,
+  UserEditPage,
+  UserTokensEditPage,
+  UsersOverviewPage,
+  ViewEventDefinitionPage,
+} from 'pages';
+import RouterErrorBoundary from 'components/errors/RouterErrorBoundary';
+import usePluginEntities from 'views/logic/usePluginEntities';
 
-import StartPage from 'pages/StartPage';
-import DelegatedSearchPage from 'pages/DelegatedSearchPage';
-import ShowMessagePage from 'pages/ShowMessagePage';
-import StreamsPage from 'pages/StreamsPage';
-import AlertsPage from 'pages/AlertsPage';
-import ShowAlertPage from 'pages/ShowAlertPage';
-import AlertConditionsPage from 'pages/AlertConditionsPage';
-import AlertNotificationsPage from 'pages/AlertNotificationsPage';
-import NewAlertConditionPage from 'pages/NewAlertConditionPage';
-import NewAlertNotificationPage from 'pages/NewAlertNotificationPage';
-import EditAlertConditionPage from 'pages/EditAlertConditionPage';
-import StreamEditPage from 'pages/StreamEditPage';
-import StreamOutputsPage from 'pages/StreamOutputsPage';
-import StreamSearchPage from 'pages/StreamSearchPage';
-import DashboardsPage from 'pages/DashboardsPage';
-import ShowDashboardPage from 'pages/ShowDashboardPage';
-import SourcesPage from 'pages/SourcesPage';
-import InputsPage from 'pages/InputsPage';
-import NodeInputsPage from 'pages/NodeInputsPage';
-import ExtractorsPage from 'pages/ExtractorsPage';
-import CreateExtractorsPage from 'pages/CreateExtractorsPage';
-import EditExtractorsPage from 'pages/EditExtractorsPage';
-import ImportExtractorsPage from 'pages/ImportExtractorsPage';
-import ExportExtractorsPage from 'pages/ExportExtractorsPage';
-import SystemOutputsPage from 'pages/SystemOutputsPage';
-import RolesPage from 'pages/RolesPage';
-import ContentPacksPage from 'pages/ContentPacksPage';
-import ExportContentPackPage from 'pages/ExportContentPackPage';
-import UsersPage from 'pages/UsersPage';
-import CreateUsersPage from 'pages/CreateUsersPage';
-import EditUsersPage from 'pages/EditUsersPage';
-import EditTokensPage from 'pages/EditTokensPage';
-import GrokPatternsPage from 'pages/GrokPatternsPage';
-import SystemOverviewPage from 'pages/SystemOverviewPage';
-import IndexerFailuresPage from 'pages/IndexerFailuresPage';
-import IndicesPage from 'pages/IndicesPage';
-import LoggersPage from 'pages/LoggersPage';
-import GettingStartedPage from 'pages/GettingStartedPage';
-import ShowMetricsPage from 'pages/ShowMetricsPage';
-import ShowNodePage from 'pages/ShowNodePage';
-import NodesPage from 'pages/NodesPage';
-import ThreadDumpPage from 'pages/ThreadDumpPage';
-import ConfigurationsPage from 'pages/ConfigurationsPage';
-import NotFoundPage from 'pages/NotFoundPage';
-import AuthenticationPage from 'pages/AuthenticationPage';
-import IndexSetPage from 'pages/IndexSetPage';
-import IndexSetConfigurationPage from 'pages/IndexSetConfigurationPage';
-import IndexSetCreationPage from 'pages/IndexSetCreationPage';
-import LUTTablesPage from 'pages/LUTTablesPage';
-import LUTCachesPage from 'pages/LUTCachesPage';
-import LUTDataAdaptersPage from 'pages/LUTDataAdaptersPage';
-import PipelinesOverviewPage from 'pages/PipelinesOverviewPage';
-import PipelineDetailsPage from 'pages/PipelineDetailsPage';
-import SimulatorPage from 'pages/SimulatorPage';
-import RulesPage from 'pages/RulesPage';
-import RuleDetailsPage from 'pages/RuleDetailsPage';
-import EnterprisePage from 'pages/EnterprisePage';
+const renderPluginRoute = ({ path, component: Component, parentComponent }) => {
+  const ParentComponent = parentComponent ?? React.Fragment;
+  const WrappedComponent = () => (
+    <ParentComponent>
+      <Component />
+    </ParentComponent>
+  );
 
-class AppRouter extends React.Component {
-  render() {
-    const pluginRoutes = PluginStore.exports('routes').map((pluginRoute) => {
-      return (<Route key={`${pluginRoute.path}-${pluginRoute.component.displayName}`}
-                    path={URLUtils.appPrefixed(pluginRoute.path)}
-                    component={pluginRoute.component} />);
-    });
-    return (
-      <Router history={history}>
-        <Route path={Routes.STARTPAGE} component={App}>
-          <Route component={AppWithGlobalNotifications}>
-            <IndexRoute component={StartPage} />
-            <Route component={AppWithSearchBar}>
-              <Route path={Routes.SEARCH} component={DelegatedSearchPage} />
-              <Route path={Routes.message_show(':index', ':messageId')} component={ShowMessagePage} />
-              <Route path={Routes.SOURCES} component={SourcesPage} />
-              <Route path={Routes.stream_search(':streamId')} component={StreamSearchPage} />
-              <Redirect from={Routes.legacy_stream_search(':streamId')} to={Routes.stream_search(':streamId')} />
-            </Route>
-            <Route component={AppWithoutSearchBar}>
-              <Route path={Routes.GETTING_STARTED} component={GettingStartedPage} />
-              <Route path={Routes.STREAMS} component={StreamsPage} />
-              <Route path={Routes.stream_edit(':streamId')} component={StreamEditPage} />
-              <Route path={Routes.stream_outputs(':streamId')} component={StreamOutputsPage} />
-              <Route path={Routes.ALERTS.LIST} component={AlertsPage} />
-              <Route path={Routes.ALERTS.CONDITIONS} component={AlertConditionsPage} />
-              <Route path={Routes.ALERTS.NEW_CONDITION} component={NewAlertConditionPage} />
-              <Route path={Routes.ALERTS.NOTIFICATIONS} component={AlertNotificationsPage} />
-              <Route path={Routes.ALERTS.NEW_NOTIFICATION} component={NewAlertNotificationPage} />
-              <Route path={Routes.show_alert_condition(':streamId', ':conditionId')} component={EditAlertConditionPage} />
-              <Route path={Routes.show_alert(':alertId')} component={ShowAlertPage} />
-              <Route path={Routes.DASHBOARDS} component={DashboardsPage} />
-              <Route path={Routes.dashboard_show(':dashboardId')} component={ShowDashboardPage} />
-              <Route path={Routes.SYSTEM.INPUTS} component={InputsPage} />
-              <Route path={Routes.node_inputs(':nodeId')} component={NodeInputsPage} />
-              <Route path={Routes.global_input_extractors(':inputId')} component={ExtractorsPage} />
-              <Route path={Routes.local_input_extractors(':nodeId', ':inputId')} component={ExtractorsPage} />
-              <Route path={Routes.new_extractor(':nodeId', ':inputId')} component={CreateExtractorsPage} />
-              <Route path={Routes.edit_extractor(':nodeId', ':inputId', ':extractorId')} component={EditExtractorsPage} />
-              <Route path={Routes.import_extractors(':nodeId', ':inputId')} component={ImportExtractorsPage} />
-              <Route path={Routes.export_extractors(':nodeId', ':inputId')} component={ExportExtractorsPage} />
-              <Route path={Routes.SYSTEM.CONFIGURATIONS} component={ConfigurationsPage} />
-              <Route path={Routes.SYSTEM.CONTENTPACKS.LIST} component={ContentPacksPage} />
-              <Route path={Routes.SYSTEM.CONTENTPACKS.EXPORT} component={ExportContentPackPage} />
-              <Route path={Routes.SYSTEM.GROKPATTERNS} component={GrokPatternsPage} />
-              <Route path={Routes.SYSTEM.INDICES.LIST} component={IndicesPage} />
-              <Route path={Routes.SYSTEM.INDEX_SETS.CREATE} component={IndexSetCreationPage} />
-              <Route path={Routes.SYSTEM.INDEX_SETS.SHOW(':indexSetId')} component={IndexSetPage} />
-              <Route path={Routes.SYSTEM.INDEX_SETS.CONFIGURATION(':indexSetId')} component={IndexSetConfigurationPage} />
-              <Route path={Routes.SYSTEM.INDICES.FAILURES} component={IndexerFailuresPage} />
+  return (
+    <Route key={`${path}-${Component.displayName}`}
+           exact
+           path={appPrefixed(path)}
+           render={WrappedComponent} />
+  );
+};
 
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW} component={LUTTablesPage} />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.CREATE} component={LUTTablesPage} action="create" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.show(':tableName')} component={LUTTablesPage} action="show" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.edit(':tableName')} component={LUTTablesPage} action="edit" />
+const routeHasAppParent = (route) => route.parentComponent === App;
 
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.CACHES.OVERVIEW} component={LUTCachesPage} />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.CACHES.CREATE} component={LUTCachesPage} action="create" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.CACHES.show(':cacheName')} component={LUTCachesPage} action="show" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.CACHES.edit(':cacheName')} component={LUTCachesPage} action="edit" />
+const AppRouter = () => {
+  const pluginRoutes = usePluginEntities('routes');
+  const pluginRoutesWithNullParent = pluginRoutes.filter((route) => (route.parentComponent === null)).map(renderPluginRoute);
+  const pluginRoutesWithAppParent = pluginRoutes.filter((route) => routeHasAppParent(route)).map((route) => renderPluginRoute({ ...route, parentComponent: null }));
+  const pluginRoutesWithParent = pluginRoutes.filter((route) => (route.parentComponent && !routeHasAppParent(route))).map(renderPluginRoute);
+  const standardPluginRoutes = pluginRoutes.filter((route) => (route.parentComponent === undefined)).map(renderPluginRoute);
 
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.OVERVIEW} component={LUTDataAdaptersPage} />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.CREATE} component={LUTDataAdaptersPage} action="create" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.show(':adapterName')} component={LUTDataAdaptersPage} action="show" />
-              <Route path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.edit(':adapterName')} component={LUTDataAdaptersPage} action="edit" />
+  return (
+    <Router history={history}>
+      <RouterErrorBoundary>
+        <Switch>
+          {pluginRoutesWithNullParent}
 
-              <Route path={Routes.SYSTEM.PIPELINES.OVERVIEW} component={PipelinesOverviewPage} />
-              <Route path={Routes.SYSTEM.PIPELINES.RULES} component={RulesPage} />
-              <Route path={Routes.SYSTEM.PIPELINES.RULE(':ruleId')} component={RuleDetailsPage} />
-              <Route path={Routes.SYSTEM.PIPELINES.SIMULATOR} component={SimulatorPage} />
-              <Route path={Routes.SYSTEM.PIPELINES.PIPELINE(':pipelineId')} component={PipelineDetailsPage} />
+          <Route path={Routes.STARTPAGE}>
+            <App>
+              <Switch>
+                <Route exact path={Routes.STARTPAGE} component={StartPage} />
+                <Route exact path={Routes.SEARCH} component={DelegatedSearchPage} />
+                {pluginRoutesWithParent}
+                {pluginRoutesWithAppParent}
+                <Route path="/">
+                  <PageContentLayout>
+                    <Switch>
+                      <Route exact path={Routes.message_show(':index', ':messageId')} component={ShowMessagePage} />
+                      <Redirect from={Routes.legacy_stream_search(':streamId')} to={Routes.stream_search(':streamId')} />
+                      <Route exact path={Routes.GETTING_STARTED} component={GettingStartedPage} />
+                      <Route exact path={Routes.STREAMS} component={StreamsPage} />
+                      <Route exact path={Routes.stream_edit(':streamId')} component={StreamEditPage} />
+                      <Route exact path={Routes.stream_outputs(':streamId')} component={StreamOutputsPage} />
 
-              <Route path={Routes.SYSTEM.LOGGING} component={LoggersPage} />
-              <Route path={Routes.SYSTEM.METRICS(':nodeId')} component={ShowMetricsPage} />
-              <Route path={Routes.SYSTEM.NODES.LIST} component={NodesPage} />
-              <Route path={Routes.SYSTEM.NODES.SHOW(':nodeId')} component={ShowNodePage} />
-              <Route path={Routes.SYSTEM.OUTPUTS} component={SystemOutputsPage} />
-              <Route path={Routes.SYSTEM.AUTHENTICATION.OVERVIEW} component={AuthenticationPage}>
-                <IndexRoute component={UsersPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.LIST} component={UsersPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.CREATE} component={CreateUsersPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.edit(':username')} component={EditUsersPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.USERS.TOKENS.edit(':username')} component={EditTokensPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.ROLES} component={RolesPage} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.PROVIDERS.CONFIG} />
-                <Route path={Routes.SYSTEM.AUTHENTICATION.PROVIDERS.provider(':name')} />
-              </Route>
-              <Route path={Routes.SYSTEM.OVERVIEW} component={SystemOverviewPage} />
-              <Route path={Routes.SYSTEM.THREADDUMP(':nodeId')} component={ThreadDumpPage} />
-              <Route path={Routes.SYSTEM.ENTERPRISE} component={EnterprisePage} />
-              {pluginRoutes}
-            </Route>
+                      <Route exact path={Routes.LEGACY_ALERTS.LIST} component={AlertsPage} />
+                      <Route exact path={Routes.LEGACY_ALERTS.CONDITIONS} component={AlertConditionsPage} />
+                      <Route exact path={Routes.LEGACY_ALERTS.NEW_CONDITION} component={NewAlertConditionPage} />
+                      <Route exact path={Routes.LEGACY_ALERTS.NOTIFICATIONS} component={AlertNotificationsPage} />
+                      <Route exact path={Routes.LEGACY_ALERTS.NEW_NOTIFICATION} component={NewAlertNotificationPage} />
+
+                      <Route exact path={Routes.ALERTS.LIST} component={EventsPage} />
+                      <Route exact path={Routes.ALERTS.DEFINITIONS.LIST} component={EventDefinitionsPage} />
+                      <Route exact path={Routes.ALERTS.DEFINITIONS.CREATE} component={CreateEventDefinitionPage} />
+                      <Route exact
+                             path={Routes.ALERTS.DEFINITIONS.edit(':definitionId')}
+                             component={EditEventDefinitionPage} />
+                      <Route exact
+                             path={Routes.ALERTS.DEFINITIONS.show(':definitionId')}
+                             component={ViewEventDefinitionPage} />
+                      <Route exact path={Routes.ALERTS.NOTIFICATIONS.LIST} component={EventNotificationsPage} />
+                      <Route exact path={Routes.ALERTS.NOTIFICATIONS.CREATE} component={CreateEventNotificationPage} />
+                      <Route exact
+                             path={Routes.ALERTS.NOTIFICATIONS.edit(':notificationId')}
+                             component={EditEventNotificationPage} />
+                      <Route exact
+                             path={Routes.ALERTS.NOTIFICATIONS.show(':notificationId')}
+                             component={ShowEventNotificationPage} />
+                      <Route exact
+                             path={Routes.show_alert_condition(':streamId', ':conditionId')}
+                             component={EditAlertConditionPage} />
+                      <Route exact path={Routes.show_alert(':alertId')} component={ShowAlertPage} />
+                      <Route exact path={Routes.SYSTEM.INPUTS} component={InputsPage} />
+                      <Route exact path={Routes.node_inputs(':nodeId')} component={NodeInputsPage} />
+                      <Route exact path={Routes.global_input_extractors(':inputId')} component={ExtractorsPage} />
+                      <Route exact path={Routes.local_input_extractors(':nodeId', ':inputId')} component={ExtractorsPage} />
+                      <Route exact path={Routes.new_extractor(':nodeId', ':inputId')} component={CreateExtractorsPage} />
+                      <Route exact
+                             path={Routes.edit_extractor(':nodeId', ':inputId', ':extractorId')}
+                             component={EditExtractorsPage} />
+                      <Route exact path={Routes.import_extractors(':nodeId', ':inputId')} component={ImportExtractorsPage} />
+                      <Route exact path={Routes.export_extractors(':nodeId', ':inputId')} component={ExportExtractorsPage} />
+                      <Route exact path={Routes.SYSTEM.CONFIGURATIONS} component={ConfigurationsPage} />
+
+                      <Route exact path={Routes.SYSTEM.CONTENTPACKS.LIST} component={ContentPacksPage} />
+                      <Route exact path={Routes.SYSTEM.CONTENTPACKS.CREATE} component={CreateContentPackPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.CONTENTPACKS.edit(':contentPackId', ':contentPackRev')}
+                             component={EditContentPackPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.CONTENTPACKS.show(':contentPackId')}
+                             component={ShowContentPackPage} />
+
+                      <Route exact path={Routes.SYSTEM.GROKPATTERNS} component={GrokPatternsPage} />
+                      <Route exact path={Routes.SYSTEM.INDICES.LIST} component={IndicesPage} />
+                      <Route exact path={Routes.SYSTEM.INDEX_SETS.CREATE} component={IndexSetCreationPage} />
+                      <Route exact path={Routes.SYSTEM.INDEX_SETS.SHOW(':indexSetId')} component={IndexSetPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.INDEX_SETS.CONFIGURATION(':indexSetId')}
+                             component={IndexSetConfigurationPage} />
+                      <Route exact path={Routes.SYSTEM.INDICES.FAILURES} component={IndexerFailuresPage} />
+
+                      <Route exact path={Routes.SYSTEM.LOOKUPTABLES.OVERVIEW} component={LUTTablesPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.CREATE}
+                             render={() => <LUTTablesPage action="create" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.show(':tableName')}
+                             render={() => <LUTTablesPage action="show" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.edit(':tableName')}
+                             render={() => <LUTTablesPage action="edit" />} />
+
+                      <Route exact path={Routes.SYSTEM.LOOKUPTABLES.CACHES.OVERVIEW} component={LUTCachesPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.CACHES.CREATE}
+                             render={() => <LUTCachesPage action="create" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.CACHES.show(':cacheName')}
+                             render={() => <LUTCachesPage action="show" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.CACHES.edit(':cacheName')}
+                             render={() => <LUTCachesPage action="edit" />} />
+
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.OVERVIEW}
+                             component={LUTDataAdaptersPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.CREATE}
+                             render={() => <LUTDataAdaptersPage action="create" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.show(':adapterName')}
+                             render={() => <LUTDataAdaptersPage action="show" />} />
+                      <Route exact
+                             path={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.edit(':adapterName')}
+                             render={() => <LUTDataAdaptersPage action="edit" />} />
+
+                      <Route exact path={Routes.SYSTEM.PIPELINES.OVERVIEW} component={PipelinesOverviewPage} />
+                      <Route exact path={Routes.SYSTEM.PIPELINES.RULES} component={RulesPage} />
+                      <Route exact path={Routes.SYSTEM.PIPELINES.RULE(':ruleId')} component={RuleDetailsPage} />
+                      <Route exact path={Routes.SYSTEM.PIPELINES.SIMULATOR} component={SimulatorPage} />
+                      <Route exact path={Routes.SYSTEM.PIPELINES.PIPELINE(':pipelineId')} component={PipelineDetailsPage} />
+
+                      <Route exact path={Routes.SYSTEM.LOGGING} component={LoggersPage} />
+                      <Route exact path={Routes.SYSTEM.METRICS(':nodeId')} component={ShowMetricsPage} />
+                      <Route exact path={Routes.SYSTEM.NODES.LIST} component={NodesPage} />
+                      <Route exact path={Routes.SYSTEM.NODES.SHOW(':nodeId')} component={ShowNodePage} />
+                      <Route exact path={Routes.SYSTEM.OUTPUTS} component={SystemOutputsPage} />
+
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.ACTIVE} component={AuthenticationPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.CREATE} component={AuthenticationCreatePage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.OVERVIEW} component={AuthenticationOverviewPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.show(':backendId')} component={AuthenticationBackendDetailsPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.edit(':backendId')} component={AuthenticationBackendEditPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.BACKENDS.createBackend(':name')} component={AuthenticationBackendCreatePage} />
+
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.AUTHENTICATORS.SHOW} component={AuthenticatorsPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHENTICATION.AUTHENTICATORS.EDIT} component={AuthenticatorsEditPage} />
+
+                      <Route exact path={Routes.SYSTEM.USERS.OVERVIEW} component={UsersOverviewPage} />
+                      <Route exact path={Routes.SYSTEM.USERS.CREATE} component={UserCreatePage} />
+                      <Route exact path={Routes.SYSTEM.USERS.show(':userId')} component={UserDetailsPage} />
+                      <Route exact path={Routes.SYSTEM.USERS.edit(':userId')} component={UserEditPage} />
+                      <Route exact path={Routes.SYSTEM.USERS.TOKENS.edit(':userId')} component={UserTokensEditPage} />
+
+                      <Route exact path={Routes.SYSTEM.AUTHZROLES.OVERVIEW} component={RolesOverviewPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHZROLES.show(':roleId')} component={RoleDetailsPage} />
+                      <Route exact path={Routes.SYSTEM.AUTHZROLES.edit(':roleId')} component={RoleEditPage} />
+
+                      <Route exact path={Routes.SYSTEM.OVERVIEW} component={SystemOverviewPage} />
+                      <Route exact path={Routes.SYSTEM.PROCESSBUFFERDUMP(':nodeId')} component={ProcessBufferDumpPage} />
+                      <Route exact path={Routes.SYSTEM.THREADDUMP(':nodeId')} component={ThreadDumpPage} />
+                      <Route exact path={Routes.SYSTEM.ENTERPRISE} component={EnterprisePage} />
+
+                      <Route exact path={Routes.SYSTEM.SIDECARS.OVERVIEW} component={SidecarsPage} />
+                      <Route exact path={Routes.SYSTEM.SIDECARS.STATUS(':sidecarId')} component={SidecarStatusPage} />
+                      <Route exact path={Routes.SYSTEM.SIDECARS.ADMINISTRATION} component={SidecarAdministrationPage} />
+                      <Route exact path={Routes.SYSTEM.SIDECARS.CONFIGURATION} component={SidecarConfigurationPage} />
+                      <Route exact path={Routes.SYSTEM.SIDECARS.NEW_CONFIGURATION} component={SidecarNewConfigurationPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.SIDECARS.EDIT_CONFIGURATION(':configurationId')}
+                             component={SidecarEditConfigurationPage} />
+                      <Route exact path={Routes.SYSTEM.SIDECARS.NEW_COLLECTOR} component={SidecarNewCollectorPage} />
+                      <Route exact
+                             path={Routes.SYSTEM.SIDECARS.EDIT_COLLECTOR(':collectorId')}
+                             component={SidecarEditCollectorPage} />
+                      {standardPluginRoutes}
+                      <Route path="*" render={() => <NotFoundPage displayPageLayout={false} />} />
+                    </Switch>
+                  </PageContentLayout>
+                </Route>
+                <Route exact path={Routes.NOTFOUND} component={NotFoundPage} />
+              </Switch>
+              <Route exact path={Routes.NOTFOUND} component={NotFoundPage} />
+            </App>
           </Route>
-          <Route component={AppWithoutSearchBar}>
-            <Route path={Routes.NOTFOUND} component={NotFoundPage} />
-            <Route path="*" component={NotFoundPage} />
-          </Route>
-        </Route>
-      </Router>
-    );
-  }
-}
+        </Switch>
+      </RouterErrorBoundary>
+    </Router>
+  );
+};
 
 export default AppRouter;

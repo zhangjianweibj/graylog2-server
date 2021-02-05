@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin.configuration.fields;
 
@@ -26,6 +26,7 @@ public abstract class AbstractConfigurationField implements ConfigurationField {
     protected final String humanName;
     protected final String description;
     protected final ConfigurationField.Optional optional;
+    protected int position;
 
     public AbstractConfigurationField(String field_type, String name, String humanName, String description, ConfigurationField.Optional optional1) {
         this.field_type = field_type;
@@ -33,6 +34,11 @@ public abstract class AbstractConfigurationField implements ConfigurationField {
         this.humanName = humanName;
         this.description = description;
         this.optional = optional1;
+        this.position = DEFAULT_POSITION;
+    }
+    public AbstractConfigurationField(String field_type, String name, String humanName, String description, ConfigurationField.Optional optional1, int position) {
+        this(field_type, name, humanName, description, optional1);
+        this.position = position;
     }
 
     @Override
@@ -68,5 +74,10 @@ public abstract class AbstractConfigurationField implements ConfigurationField {
     @Override
     public Map<String, Map<String, String>> getAdditionalInformation() {
         return Collections.emptyMap();
+    }
+
+    @Override
+    public int getPosition() {
+        return position;
     }
 }

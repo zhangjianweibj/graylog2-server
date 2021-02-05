@@ -1,11 +1,28 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Button, Alert, Table } from 'react-bootstrap';
+import naturalSort from 'javascript-natural-sort';
+
+import { Button, Alert, Table } from 'components/graylog';
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 import { IfPermitted, SortableList } from 'components/common';
 import ObjectUtils from 'util/ObjectUtils';
-import naturalSort from 'javascript-natural-sort';
 
 const MessageProcessorsConfig = createReactClass({
   displayName: 'MessageProcessorsConfig',
@@ -33,12 +50,14 @@ const MessageProcessorsConfig = createReactClass({
     };
   },
 
+  inputs: {},
+
   _openModal() {
-    this.refs.configModal.open();
+    this.configModal.open();
   },
 
   _closeModal() {
-    this.refs.configModal.close();
+    this.configModal.close();
   },
 
   _saveConfig() {
@@ -68,10 +87,10 @@ const MessageProcessorsConfig = createReactClass({
     return () => {
       const disabledProcessors = this.state.config.disabled_processors;
       const update = ObjectUtils.clone(this.state.config);
-      const checked = this.refs[className].checked;
+      const { checked } = this.inputs[className];
 
       if (checked) {
-        update.disabled_processors = disabledProcessors.filter(p => p !== className);
+        update.disabled_processors = disabledProcessors.filter((p) => p !== className);
       } else if (disabledProcessors.indexOf(className) === -1) {
         update.disabled_processors.push(className);
       }
@@ -96,7 +115,8 @@ const MessageProcessorsConfig = createReactClass({
 
   _summary() {
     return this.state.config.processor_order.map((processor, idx) => {
-      const status = this.state.config.disabled_processors.filter(p => p === processor.class_name).length > 0 ? 'disabled' : 'active';
+      const status = this.state.config.disabled_processors.filter((p) => p === processor.class_name).length > 0 ? 'disabled' : 'active';
+
       return (
         <tr key={idx}>
           <td>{idx + 1}</td>
@@ -115,13 +135,13 @@ const MessageProcessorsConfig = createReactClass({
 
   _statusForm() {
     return ObjectUtils.clone(this.state.config.processor_order).sort((a, b) => naturalSort(a.name, b.name)).map((processor, idx) => {
-      const enabled = this.state.config.disabled_processors.filter(p => p === processor.class_name).length < 1;
+      const enabled = this.state.config.disabled_processors.filter((p) => p === processor.class_name).length < 1;
 
       return (
         <tr key={idx}>
           <td>{processor.name}</td>
           <td>
-            <input ref={processor.class_name}
+            <input ref={(elem) => { this.inputs[processor.class_name] = elem; }}
                    type="checkbox"
                    checked={enabled}
                    onChange={this._toggleStatus(processor.class_name)} />
@@ -154,7 +174,7 @@ const MessageProcessorsConfig = createReactClass({
           <Button bsStyle="info" bsSize="xs" onClick={this._openModal}>Update</Button>
         </IfPermitted>
 
-        <BootstrapModalForm ref="configModal"
+        <BootstrapModalForm ref={(configModal) => { this.configModal = configModal; }}
                             title="Update Message Processors Configuration"
                             onSubmitForm={this._saveConfig}
                             onModalClose={this._resetConfig}

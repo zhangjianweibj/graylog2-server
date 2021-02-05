@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.audit;
 
@@ -33,18 +33,16 @@ public class AuditEventTypes implements PluginAuditEventTypes {
     public static final String ALERT_RECEIVER_CREATE = PREFIX + "alert_receiver:create";
     public static final String ALERT_RECEIVER_DELETE = PREFIX + "alert_receiver:delete";
     public static final String ALERT_RECEIVER_UPDATE = PREFIX + "alert_receiver:update";
+    public static final String AUTHENTICATION_HTTP_HEADER_CONFIG_UPDATE = PREFIX + "authentication_http_header_config:update";
     public static final String AUTHENTICATION_PROVIDER_CONFIGURATION_UPDATE = PREFIX + "authentication_provider_configuration:update";
-    public static final String BLACKLIST_FILTER_CREATE = PREFIX + "blacklist_filter:create";
-    public static final String BLACKLIST_FILTER_DELETE = PREFIX + "blacklist_filter:delete";
-    public static final String BLACKLIST_FILTER_UPDATE = PREFIX + "blacklist_filter:update";
     public static final String CLUSTER_CONFIGURATION_CREATE = PREFIX + "cluster_configuration:create";
     public static final String CLUSTER_CONFIGURATION_DELETE = PREFIX + "cluster_configuration:delete";
     public static final String CLUSTER_CONFIGURATION_UPDATE = PREFIX + "cluster_configuration:update";
-    public static final String CONTENT_PACK_APPLY = PREFIX + "content_pack:apply";
     public static final String CONTENT_PACK_CREATE = PREFIX + "content_pack:create";
     public static final String CONTENT_PACK_DELETE = PREFIX + "content_pack:delete";
-    public static final String CONTENT_PACK_EXPORT = PREFIX + "content_pack:export";
-    public static final String CONTENT_PACK_UPDATE = PREFIX + "content_pack:update";
+    public static final String CONTENT_PACK_DELETE_REV = PREFIX + "content_pack:delete_rev";
+    public static final String CONTENT_PACK_INSTALL = PREFIX + "content_pack:install";
+    public static final String CONTENT_PACK_UNINSTALL = PREFIX + "content_pack:uninstall";
     public static final String DASHBOARD_CREATE = PREFIX + "dashboard:create";
     public static final String DASHBOARD_DELETE = PREFIX + "dashboard:delete";
     public static final String DASHBOARD_UPDATE = PREFIX + "dashboard:update";
@@ -64,6 +62,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
     public static final String ES_INDEX_RETENTION_STRATEGY_UPDATE = PREFIX + "es_index_retention_strategy:update";
     public static final String ES_INDEX_ROTATION_COMPLETE = PREFIX + "es_index_rotation:complete";
     public static final String ES_INDEX_ROTATION_STRATEGY_UPDATE = PREFIX + "es_index_rotation_strategy:update";
+    public static final String ES_INDEX_TEMPLATE_UPDATE = PREFIX + "es_index_template:update";
     public static final String ES_WRITE_INDEX_UPDATE = PREFIX + "es_write_index:update";
     public static final String ES_WRITE_INDEX_UPDATE_JOB_START = PREFIX + "es_write_index_update_job:start";
     public static final String EXTRACTOR_CREATE = PREFIX + "extractor:create";
@@ -71,16 +70,14 @@ public class AuditEventTypes implements PluginAuditEventTypes {
     public static final String EXTRACTOR_ORDER_UPDATE = PREFIX + "extractor_order:update";
     public static final String EXTRACTOR_UPDATE = PREFIX + "extractor:update";
     public static final String GETTING_STARTED_GUIDE_OPT_OUT_CREATE = PREFIX + "getting_started_guide_opt_out:create";
+    public static final String GRANTS_UPDATE = PREFIX + "grants:update";
     public static final String GROK_PATTERN_CREATE = PREFIX + "grok_pattern:create";
     public static final String GROK_PATTERN_DELETE = PREFIX + "grok_pattern:delete";
     public static final String GROK_PATTERN_IMPORT_CREATE = PREFIX + "grok_pattern_import:create";
     public static final String GROK_PATTERN_UPDATE = PREFIX + "grok_pattern:update";
     public static final String INDEX_SET_CREATE = PREFIX + "index_set:create";
-    public static final String INDEX_SET_DELETE= PREFIX + "index_set:delete";
+    public static final String INDEX_SET_DELETE = PREFIX + "index_set:delete";
     public static final String INDEX_SET_UPDATE = PREFIX + "index_set:update";
-    public static final String LDAP_CONFIGURATION_DELETE = PREFIX + "ldap_configuration:delete";
-    public static final String LDAP_CONFIGURATION_UPDATE = PREFIX + "ldap_configuration:update";
-    public static final String LDAP_GROUP_MAPPING_UPDATE = PREFIX + "ldap_group_mapping:update";
     public static final String LOAD_BALANCER_STATUS_UPDATE = PREFIX + "load_balancer_status:update";
     public static final String LOG_LEVEL_UPDATE = PREFIX + "log_level:update";
     public static final String LOOKUP_ADAPTER_CREATE = PREFIX + "lut_adapter:create";
@@ -140,6 +137,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
     public static final String SYSTEM_JOB_STOP = PREFIX + "system_job:stop";
     public static final String SYSTEM_NOTIFICATION_CREATE = PREFIX + "system_notification:create";
     public static final String SYSTEM_NOTIFICATION_DELETE = PREFIX + "system_notification:delete";
+    public static final String URL_WHITELIST_UPDATE = PREFIX + "url_whitelist:update";
     public static final String USER_ACCESS_TOKEN_CREATE = PREFIX + "user_access_token:create";
     public static final String USER_ACCESS_TOKEN_DELETE = PREFIX + "user_access_token:delete";
     public static final String USER_CREATE = PREFIX + "user:create";
@@ -150,7 +148,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
     public static final String USER_PREFERENCES_UPDATE = PREFIX + "user_preferences:update";
     public static final String USER_UPDATE = PREFIX + "user:update";
 
-    private static final Set<String> EVENT_TYPES = ImmutableSet.<String>builder()
+    private static final ImmutableSet<String> EVENT_TYPES = ImmutableSet.<String>builder()
             .add(ALARM_CALLBACK_CREATE)
             .add(ALARM_CALLBACK_DELETE)
             .add(ALARM_CALLBACK_UPDATE)
@@ -160,18 +158,16 @@ public class AuditEventTypes implements PluginAuditEventTypes {
             .add(ALERT_RECEIVER_CREATE)
             .add(ALERT_RECEIVER_DELETE)
             .add(ALERT_RECEIVER_UPDATE)
+            .add(AUTHENTICATION_HTTP_HEADER_CONFIG_UPDATE)
             .add(AUTHENTICATION_PROVIDER_CONFIGURATION_UPDATE)
-            .add(BLACKLIST_FILTER_CREATE)
-            .add(BLACKLIST_FILTER_DELETE)
-            .add(BLACKLIST_FILTER_UPDATE)
             .add(CLUSTER_CONFIGURATION_CREATE)
             .add(CLUSTER_CONFIGURATION_DELETE)
             .add(CLUSTER_CONFIGURATION_UPDATE)
-            .add(CONTENT_PACK_APPLY)
             .add(CONTENT_PACK_CREATE)
             .add(CONTENT_PACK_DELETE)
-            .add(CONTENT_PACK_EXPORT)
-            .add(CONTENT_PACK_UPDATE)
+            .add(CONTENT_PACK_DELETE_REV)
+            .add(CONTENT_PACK_INSTALL)
+            .add(CONTENT_PACK_UNINSTALL)
             .add(DASHBOARD_CREATE)
             .add(DASHBOARD_DELETE)
             .add(DASHBOARD_UPDATE)
@@ -191,6 +187,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
             .add(ES_INDEX_RETENTION_STRATEGY_UPDATE)
             .add(ES_INDEX_ROTATION_COMPLETE)
             .add(ES_INDEX_ROTATION_STRATEGY_UPDATE)
+            .add(ES_INDEX_TEMPLATE_UPDATE)
             .add(ES_WRITE_INDEX_UPDATE)
             .add(ES_WRITE_INDEX_UPDATE_JOB_START)
             .add(EXTRACTOR_CREATE)
@@ -198,6 +195,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
             .add(EXTRACTOR_ORDER_UPDATE)
             .add(EXTRACTOR_UPDATE)
             .add(GETTING_STARTED_GUIDE_OPT_OUT_CREATE)
+            .add(GRANTS_UPDATE)
             .add(GROK_PATTERN_CREATE)
             .add(GROK_PATTERN_DELETE)
             .add(GROK_PATTERN_IMPORT_CREATE)
@@ -205,9 +203,6 @@ public class AuditEventTypes implements PluginAuditEventTypes {
             .add(INDEX_SET_CREATE)
             .add(INDEX_SET_DELETE)
             .add(INDEX_SET_UPDATE)
-            .add(LDAP_CONFIGURATION_DELETE)
-            .add(LDAP_CONFIGURATION_UPDATE)
-            .add(LDAP_GROUP_MAPPING_UPDATE)
             .add(LOAD_BALANCER_STATUS_UPDATE)
             .add(LOG_LEVEL_UPDATE)
             .add(LOOKUP_ADAPTER_CREATE)
@@ -267,6 +262,7 @@ public class AuditEventTypes implements PluginAuditEventTypes {
             .add(SYSTEM_JOB_STOP)
             .add(SYSTEM_NOTIFICATION_CREATE)
             .add(SYSTEM_NOTIFICATION_DELETE)
+            .add(URL_WHITELIST_UPDATE)
             .add(USER_ACCESS_TOKEN_CREATE)
             .add(USER_ACCESS_TOKEN_DELETE)
             .add(USER_CREATE)

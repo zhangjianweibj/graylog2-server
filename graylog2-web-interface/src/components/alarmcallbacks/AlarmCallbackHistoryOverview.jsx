@@ -1,12 +1,27 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Row, Col } from 'react-bootstrap';
 
 import CombinedProvider from 'injection/CombinedProvider';
 import { sortByDate } from 'util/SortUtils';
-
+import { Row, Col } from 'components/graylog';
 import { EntityList, Spinner } from 'components/common';
 import { AlarmCallbackHistory } from 'components/alarmcallbacks';
 
@@ -41,10 +56,12 @@ const AlarmCallbackHistoryOverview = createReactClass({
     const histories = this.state.histories
       .sort((h1, h2) => sortByDate(h1.created_at, h2.created_at))
       .map(this._formatHistory);
+
     return (
       <Row>
         <Col md={12}>
-          <EntityList bsNoItemsStyle="info" noItemsText="No notifications were triggered during the alert."
+          <EntityList bsNoItemsStyle="info"
+                      noItemsText="No notifications were triggered during the alert."
                       items={histories} />
         </Col>
       </Row>

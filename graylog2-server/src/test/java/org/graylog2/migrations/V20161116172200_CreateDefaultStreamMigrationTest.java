@@ -1,31 +1,28 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
 import org.graylog2.database.NotFoundException;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.IndexSetRegistry;
 import org.graylog2.indexer.indexset.IndexSetConfig;
-import org.graylog2.plugin.database.ValidationException;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.streams.StreamImpl;
 import org.graylog2.streams.StreamService;
-import org.graylog2.streams.events.StreamsChangedEvent;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -40,7 +37,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 public class V20161116172200_CreateDefaultStreamMigrationTest {
@@ -53,8 +49,6 @@ public class V20161116172200_CreateDefaultStreamMigrationTest {
     @Mock
     private StreamService streamService;
     @Mock
-    private ClusterEventBus clusterEventBus;
-    @Mock
     private IndexSetRegistry indexSetRegistry;
     @Mock
     private IndexSet indexSet;
@@ -62,8 +56,8 @@ public class V20161116172200_CreateDefaultStreamMigrationTest {
     private IndexSetConfig indexSetConfig;
 
     @Before
-    public void setUpService() throws Exception {
-        migration = new V20161116172200_CreateDefaultStreamMigration(streamService, clusterEventBus, indexSetRegistry);
+    public void setUpService() {
+        migration = new V20161116172200_CreateDefaultStreamMigration(streamService, indexSetRegistry);
 
         when(indexSet.getConfig()).thenReturn(indexSetConfig);
         when(indexSetConfig.id()).thenReturn("abc123");
@@ -102,26 +96,5 @@ public class V20161116172200_CreateDefaultStreamMigrationTest {
         migration.upgrade();
 
         verify(streamService, never()).save(any(Stream.class));
-    }
-
-    @Test
-    public void upgradePostsStreamsChangedEvent() throws Exception {
-        when(indexSetRegistry.getDefault()).thenReturn(indexSet);
-        when(streamService.load("000000000000000000000001")).thenThrow(NotFoundException.class);
-        final ArgumentCaptor<StreamsChangedEvent> argumentCaptor = ArgumentCaptor.forClass(StreamsChangedEvent.class);
-        migration.upgrade();
-        verify(clusterEventBus).post(argumentCaptor.capture());
-
-        final StreamsChangedEvent streamsChangedEvent = argumentCaptor.getValue();
-        assertThat(streamsChangedEvent.streamIds()).containsOnly(Stream.DEFAULT_STREAM_ID);
-    }
-
-    @Test
-    public void upgradeDoesNotPostStreamsChangedEventIfStreamCreationFails() throws Exception {
-        when(streamService.save(any(Stream.class))).thenThrow(ValidationException.class);
-
-        migration.upgrade();
-
-        verifyNoMoreInteractions(clusterEventBus);
     }
 }

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.functions;
 
@@ -52,6 +52,7 @@ import org.graylog.plugins.pipelineprocessor.functions.dates.periods.Seconds;
 import org.graylog.plugins.pipelineprocessor.functions.dates.periods.Weeks;
 import org.graylog.plugins.pipelineprocessor.functions.dates.periods.Years;
 import org.graylog.plugins.pipelineprocessor.functions.debug.Debug;
+import org.graylog.plugins.pipelineprocessor.functions.debug.MetricCounterIncrement;
 import org.graylog.plugins.pipelineprocessor.functions.encoding.Base16Decode;
 import org.graylog.plugins.pipelineprocessor.functions.encoding.Base16Encode;
 import org.graylog.plugins.pipelineprocessor.functions.encoding.Base32Decode;
@@ -77,6 +78,12 @@ import org.graylog.plugins.pipelineprocessor.functions.json.IsJson;
 import org.graylog.plugins.pipelineprocessor.functions.json.JsonParse;
 import org.graylog.plugins.pipelineprocessor.functions.json.SelectJsonPath;
 import org.graylog.plugins.pipelineprocessor.functions.lookup.Lookup;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupAddStringList;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupClearKey;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupRemoveStringList;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupSetValue;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupStringList;
+import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupSetStringList;
 import org.graylog.plugins.pipelineprocessor.functions.lookup.LookupValue;
 import org.graylog.plugins.pipelineprocessor.functions.messages.CloneMessage;
 import org.graylog.plugins.pipelineprocessor.functions.messages.CreateMessage;
@@ -89,15 +96,21 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.RouteToStream;
 import org.graylog.plugins.pipelineprocessor.functions.messages.SetField;
 import org.graylog.plugins.pipelineprocessor.functions.messages.SetFields;
 import org.graylog.plugins.pipelineprocessor.functions.messages.StreamCacheService;
+import org.graylog.plugins.pipelineprocessor.functions.messages.TrafficAccountingSize;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Abbreviate;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Capitalize;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Concat;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Contains;
 import org.graylog.plugins.pipelineprocessor.functions.strings.EndsWith;
+import org.graylog.plugins.pipelineprocessor.functions.strings.FirstNonNull;
 import org.graylog.plugins.pipelineprocessor.functions.strings.GrokMatch;
+import org.graylog.plugins.pipelineprocessor.functions.strings.Join;
 import org.graylog.plugins.pipelineprocessor.functions.strings.KeyValue;
+import org.graylog.plugins.pipelineprocessor.functions.strings.Length;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Lowercase;
 import org.graylog.plugins.pipelineprocessor.functions.strings.RegexMatch;
+import org.graylog.plugins.pipelineprocessor.functions.strings.RegexReplace;
+import org.graylog.plugins.pipelineprocessor.functions.strings.Replace;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Split;
 import org.graylog.plugins.pipelineprocessor.functions.strings.StartsWith;
 import org.graylog.plugins.pipelineprocessor.functions.strings.Substring;
@@ -110,6 +123,8 @@ import org.graylog.plugins.pipelineprocessor.functions.syslog.SyslogPriorityConv
 import org.graylog.plugins.pipelineprocessor.functions.syslog.SyslogPriorityToStringConversion;
 import org.graylog.plugins.pipelineprocessor.functions.urls.IsUrl;
 import org.graylog.plugins.pipelineprocessor.functions.urls.UrlConversion;
+import org.graylog.plugins.pipelineprocessor.functions.urls.UrlDecode;
+import org.graylog.plugins.pipelineprocessor.functions.urls.UrlEncode;
 import org.graylog2.plugin.PluginModule;
 
 public class ProcessorFunctionsModule extends PluginModule {
@@ -149,6 +164,7 @@ public class ProcessorFunctionsModule extends PluginModule {
         addMessageProcessorFunction(CloneMessage.NAME, CloneMessage.class);
         addMessageProcessorFunction(RemoveFromStream.NAME, RemoveFromStream.class);
         addMessageProcessorFunction(RouteToStream.NAME, RouteToStream.class);
+        addMessageProcessorFunction(TrafficAccountingSize.NAME, TrafficAccountingSize.class);
         // helper service for route_to_stream
         serviceBinder().addBinding().to(StreamCacheService.class).in(Scopes.SINGLETON);
 
@@ -157,7 +173,9 @@ public class ProcessorFunctionsModule extends PluginModule {
 
         // generic functions
         addMessageProcessorFunction(RegexMatch.NAME, RegexMatch.class);
+        addMessageProcessorFunction(RegexReplace.NAME, RegexReplace.class);
         addMessageProcessorFunction(GrokMatch.NAME, GrokMatch.class);
+        addMessageProcessorFunction(GrokExists.NAME, GrokExists.class);
 
         // string functions
         addMessageProcessorFunction(Abbreviate.NAME, Abbreviate.class);
@@ -171,8 +189,12 @@ public class ProcessorFunctionsModule extends PluginModule {
         addMessageProcessorFunction(Uppercase.NAME, Uppercase.class);
         addMessageProcessorFunction(Concat.NAME, Concat.class);
         addMessageProcessorFunction(KeyValue.NAME, KeyValue.class);
+        addMessageProcessorFunction(Join.NAME, Join.class);
         addMessageProcessorFunction(Split.NAME, Split.class);
         addMessageProcessorFunction(StartsWith.NAME, StartsWith.class);
+        addMessageProcessorFunction(Replace.NAME, Replace.class);
+        addMessageProcessorFunction(Length.NAME, Length.class);
+        addMessageProcessorFunction(FirstNonNull.NAME, FirstNonNull.class);
 
         // json
         addMessageProcessorFunction(JsonParse.NAME, JsonParse.class);
@@ -227,6 +249,8 @@ public class ProcessorFunctionsModule extends PluginModule {
 
         // URL parsing
         addMessageProcessorFunction(UrlConversion.NAME, UrlConversion.class);
+        addMessageProcessorFunction(UrlDecode.NAME, UrlDecode.class);
+        addMessageProcessorFunction(UrlEncode.NAME, UrlEncode.class);
 
         // Syslog support
         addMessageProcessorFunction(SyslogFacilityConversion.NAME, SyslogFacilityConversion.class);
@@ -237,9 +261,16 @@ public class ProcessorFunctionsModule extends PluginModule {
         // Lookup tables
         addMessageProcessorFunction(Lookup.NAME, Lookup.class);
         addMessageProcessorFunction(LookupValue.NAME, LookupValue.class);
+        addMessageProcessorFunction(LookupStringList.NAME, LookupStringList.class);
+        addMessageProcessorFunction(LookupSetValue.NAME, LookupSetValue.class);
+        addMessageProcessorFunction(LookupClearKey.NAME, LookupClearKey.class);
+        addMessageProcessorFunction(LookupSetStringList.NAME, LookupSetStringList.class);
+        addMessageProcessorFunction(LookupAddStringList.NAME, LookupAddStringList.class);
+        addMessageProcessorFunction(LookupRemoveStringList.NAME, LookupRemoveStringList.class);
 
         // Debug
         addMessageProcessorFunction(Debug.NAME, Debug.class);
+        addMessageProcessorFunction(MetricCounterIncrement.NAME, MetricCounterIncrement.class);
     }
 
     protected void addMessageProcessorFunction(String name, Class<? extends Function<?>> functionClass) {

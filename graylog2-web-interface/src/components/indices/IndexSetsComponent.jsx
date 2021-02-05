@@ -1,17 +1,30 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Link } from 'react-router';
-import { Col, Button, Label, DropdownButton, MenuItem } from 'react-bootstrap';
 
+import { LinkContainer, Link } from 'components/graylog/router';
+import { Col, Label, DropdownButton, MenuItem, Button } from 'components/graylog';
 import { EntityList, EntityListItem, PaginatedList, Spinner } from 'components/common';
 import Routes from 'routing/Routes';
 import StringUtils from 'util/StringUtils';
 import NumberUtils from 'util/NumberUtils';
-
 import { IndexSetDeletionForm, IndexSetDetails } from 'components/indices';
-
 import CombinedProvider from 'injection/CombinedProvider';
 
 const { IndexSetsStore, IndexSetsActions } = CombinedProvider.get('IndexSets');
@@ -23,6 +36,8 @@ const IndexSetsComponent = createReactClass({
   componentDidMount() {
     this.loadData(1, this.PAGE_SIZE);
   },
+
+  forms: {},
 
   loadData(pageNo, limit) {
     this.currentPageNo = pageNo;
@@ -49,7 +64,7 @@ const IndexSetsComponent = createReactClass({
 
   _onDelete(indexSet) {
     return () => {
-      this.refs[`index-set-deletion-form-${indexSet.id}`].open();
+      this.forms[`index-set-deletion-form-${indexSet.id}`].open();
     };
   },
 
@@ -67,9 +82,9 @@ const IndexSetsComponent = createReactClass({
         </LinkContainer>
         {' '}
         <DropdownButton title="More Actions" id={`index-set-dropdown-${indexSet.id}`} pullRight>
-          <MenuItem
-            onSelect={this._onSetDefault(indexSet)}
-            disabled={!indexSet.writable || indexSet.default}>Set as default</MenuItem>
+          <MenuItem onSelect={this._onSetDefault(indexSet)}
+                    disabled={!indexSet.writable || indexSet.default}>Set as default
+          </MenuItem>
           <MenuItem divider />
           <MenuItem onSelect={this._onDelete(indexSet)}>Delete</MenuItem>
         </DropdownButton>
@@ -80,7 +95,7 @@ const IndexSetsComponent = createReactClass({
       <Col md={12}>
         <IndexSetDetails indexSet={indexSet} />
 
-        <IndexSetDeletionForm ref={`index-set-deletion-form-${indexSet.id}`} indexSet={indexSet} onDelete={this._deleteIndexSet} />
+        <IndexSetDeletionForm ref={(elem) => { this.forms[`index-set-deletion-form-${indexSet.id}`] = elem; }} indexSet={indexSet} onDelete={this._deleteIndexSet} />
       </Col>
     );
 
@@ -92,13 +107,15 @@ const IndexSetsComponent = createReactClass({
 
     const isDefault = indexSet.default ? <Label key={`index-set-${indexSet.id}-default-label`} bsStyle="primary">default</Label> : '';
     const isReadOnly = !indexSet.writable ? <Label key={`index-set-${indexSet.id}-readOnly-label`} bsStyle="info">read only</Label> : '';
-    let description = indexSet.description;
+    let { description } = indexSet;
+
     if (indexSet.default) {
       description += `${description.endsWith('.') ? '' : '.'} Graylog will use this index set by default.`;
     }
 
     let statsString;
     const stats = this.state.indexSetStats[indexSet.id];
+
     if (stats) {
       statsString = this._formatStatsString(stats);
     }
@@ -117,6 +134,7 @@ const IndexSetsComponent = createReactClass({
     if (!stats) {
       return 'N/A';
     }
+
     const indices = `${NumberUtils.formatNumber(stats.indices)} ${StringUtils.pluralize(stats.indices, 'index', 'indices')}`;
     const documents = `${NumberUtils.formatNumber(stats.documents)} ${StringUtils.pluralize(stats.documents, 'document', 'documents')}`;
     const size = NumberUtils.formatBytes(stats.size);
@@ -145,7 +163,7 @@ const IndexSetsComponent = createReactClass({
                        showPageSizeSelect={false}>
           <EntityList bsNoItemsStyle="info"
                       noItemsText="There are no index sets to display"
-                      items={this.state.indexSets.map(indexSet => this._formatIndexSet(indexSet))} />
+                      items={this.state.indexSets.map((indexSet) => this._formatIndexSet(indexSet))} />
         </PaginatedList>
       </div>
     );

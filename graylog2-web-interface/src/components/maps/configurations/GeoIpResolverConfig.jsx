@@ -1,7 +1,24 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Button } from 'react-bootstrap';
+
+import { Button } from 'components/graylog';
 import { BootstrapModalForm, Input } from 'components/bootstrap';
 import { IfPermitted, Select } from 'components/common';
 import { DocumentationLink } from 'components/support';
@@ -27,30 +44,30 @@ const GeoIpResolverConfig = createReactClass({
   },
 
   getInitialState() {
+    const { config } = this.props;
+
     return {
-      config: ObjectUtils.clone(this.props.config),
+      config: ObjectUtils.clone(config),
     };
   },
 
-  componentWillReceiveProps(newProps) {
-    this.setState({config: ObjectUtils.clone(newProps.config)});
+  UNSAFE_componentWillReceiveProps(newProps) {
+    this.setState({ config: ObjectUtils.clone(newProps.config) });
   },
 
+  inputs: {},
+
   _updateConfigField(field, value) {
-    const update = ObjectUtils.clone(this.state.config);
+    const { config } = this.state;
+    const update = ObjectUtils.clone(config);
+
     update[field] = value;
-    this.setState({config: update});
+    this.setState({ config: update });
   },
 
   _onCheckboxClick(field, ref) {
     return () => {
-      this._updateConfigField(field, this.refs[ref].getChecked());
-    };
-  },
-
-  _onSelect(field) {
-    return (selection) => {
-      this._updateConfigField(field, selection);
+      this._updateConfigField(field, this.inputs[ref].getChecked());
     };
   },
 
@@ -61,11 +78,11 @@ const GeoIpResolverConfig = createReactClass({
   },
 
   _openModal() {
-    this.refs.geoIpConfigModal.open();
+    this.geoIpConfigModal.open();
   },
 
   _closeModal() {
-    this.refs.geoIpConfigModal.close();
+    this.geoIpConfigModal.close();
   },
 
   _resetConfig() {
@@ -74,7 +91,10 @@ const GeoIpResolverConfig = createReactClass({
   },
 
   _saveConfig() {
-    this.props.updateConfig(this.state.config).then(() => {
+    const { updateConfig } = this.props;
+    const { config } = this.state;
+
+    updateConfig(config).then(() => {
       this._closeModal();
     });
   },
@@ -82,7 +102,7 @@ const GeoIpResolverConfig = createReactClass({
   _availableDatabaseTypes() {
     // TODO: Support country database as well.
     return [
-      {value: 'MAXMIND_CITY', label: 'City database'},
+      { value: 'MAXMIND_CITY', label: 'City database' },
     ];
   },
 
@@ -91,6 +111,8 @@ const GeoIpResolverConfig = createReactClass({
   },
 
   render() {
+    const { config } = this.state;
+
     return (
       <div>
         <h3>Geo-Location Processor</h3>
@@ -103,18 +125,18 @@ const GeoIpResolverConfig = createReactClass({
 
         <dl className="deflist">
           <dt>Enabled:</dt>
-          <dd>{this.state.config.enabled === true ? 'yes' : 'no'}</dd>
+          <dd>{config.enabled === true ? 'yes' : 'no'}</dd>
           <dt>Database type:</dt>
-          <dd>{this._activeDatabaseType(this.state.config.db_type)}</dd>
+          <dd>{this._activeDatabaseType(config.db_type)}</dd>
           <dt>Database path:</dt>
-          <dd>{this.state.config.db_path}</dd>
+          <dd>{config.db_path}</dd>
         </dl>
 
         <IfPermitted permissions="clusterconfigentry:edit">
           <Button bsStyle="info" bsSize="xs" onClick={this._openModal}>Update</Button>
         </IfPermitted>
 
-        <BootstrapModalForm ref="geoIpConfigModal"
+        <BootstrapModalForm ref={(geoIpConfigModal) => { this.geoIpConfigModal = geoIpConfigModal; }}
                             title="Update Geo-Location Processor Configuration"
                             onSubmitForm={this._saveConfig}
                             onModalClose={this._resetConfig}
@@ -122,28 +144,28 @@ const GeoIpResolverConfig = createReactClass({
           <fieldset>
             <Input id="geolocation-enable-checkbox"
                    type="checkbox"
-                   ref="configEnabled"
+                   ref={(elem) => { this.inputs.configEnabled = elem; }}
                    label="Enable Geo-Location processor"
                    name="enabled"
-                   checked={this.state.config.enabled}
-                   onChange={this._onCheckboxClick('enabled', 'configEnabled')}/>
+                   checked={config.enabled}
+                   onChange={this._onCheckboxClick('enabled', 'configEnabled')} />
             <Input id="maxmind-db-select"
                    label="Select the MaxMind database type"
                    help="Select the MaxMind database type you want to use to extract geo-location information.">
               <Select placeholder="Select MaxMind database type"
                       required
                       options={this._availableDatabaseTypes()}
-                      matchProp="value"
-                      value={this.state.config.db_type}
+                      matchProp="label"
+                      value={config.db_type}
                       onChange={this._onDbTypeSelect} />
             </Input>
             <Input id="maxmind-db-path"
                    type="text"
                    label="Path to the MaxMind database"
-                   help={<span>You can download a free version of the database from <a href="https://dev.maxmind.com/geoip/geoip2/geolite2/" target="_blank">MaxMind</a>.</span>}
+                   help={<span>You can download a free version of the database from <a href="https://dev.maxmind.com/geoip/geoip2/geolite2/" target="_blank" rel="noopener noreferrer">MaxMind</a>.</span>}
                    name="db_path"
-                   value={this.state.config.db_path}
-                   onChange={this._onUpdate('db_path')}/>
+                   value={config.db_path}
+                   onChange={this._onUpdate('db_path')} />
           </fieldset>
         </BootstrapModalForm>
       </div>

@@ -1,8 +1,24 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert } from 'react-bootstrap';
 
-import { DataTable, ExternalLink, Spinner } from 'components/common';
+import { Alert } from 'components/graylog';
+import { DataTable, ExternalLink, Spinner, Icon } from 'components/common';
 
 class PluginsDataTable extends React.Component {
   static propTypes = {
@@ -34,7 +50,7 @@ class PluginsDataTable extends React.Component {
     }
 
     if (this.props.plugins.length === 0) {
-      return <Alert bsStyle="info"><i className="fa fa-info-circle" />&nbsp; This node has not any installed plugins.</Alert>;
+      return <Alert bsStyle="info"><Icon name="info-circle" />&nbsp; This node has not any installed plugins.</Alert>;
     }
 
     const headers = ['Name', 'Version', 'Author', 'Description'];
@@ -45,7 +61,7 @@ class PluginsDataTable extends React.Component {
                  className="table-hover table-condensed table-striped"
                  headers={headers}
                  headerCellFormatter={this._headerCellFormatter}
-                 sortByKey={'name'}
+                 sortByKey="name"
                  rows={this.props.plugins}
                  dataRowFormatter={this._pluginInfoFormatter}
                  filterLabel="Filter"

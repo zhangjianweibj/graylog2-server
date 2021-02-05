@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin;
 
@@ -69,12 +69,12 @@ public class ServerStatusTest {
 
     @Test
     public void testGetNodeId() throws Exception {
-        assertEquals(status.getNodeId().toString(), new String(Files.readAllBytes(tempFile.toPath()), StandardCharsets.UTF_8));
+        assertEquals(new String(Files.readAllBytes(tempFile.toPath()), StandardCharsets.UTF_8), status.getNodeId().toString());
     }
 
     @Test
     public void testGetLifecycle() throws Exception {
-        assertEquals(status.getLifecycle(), Lifecycle.UNINITIALIZED);
+        assertEquals(Lifecycle.UNINITIALIZED, status.getLifecycle());
     }
 
     @Test
@@ -166,18 +166,18 @@ public class ServerStatusTest {
     @Test
     @SuppressForbidden("Deliberate invocation")
     public void testGetTimezone() throws Exception {
-        assertEquals(status.getTimezone(), DateTimeZone.getDefault());
+        assertEquals(DateTimeZone.getDefault(), status.getTimezone());
     }
 
     @Test
     public void testAddCapability() throws Exception {
-        assertEquals(status.addCapability(ServerStatus.Capability.SERVER), status);
+        assertEquals(status, status.addCapability(ServerStatus.Capability.SERVER));
         assertTrue(status.hasCapabilities(ServerStatus.Capability.MASTER, ServerStatus.Capability.SERVER));
     }
 
     @Test
     public void testAddCapabilities() throws Exception {
-        assertEquals(status.addCapabilities(ServerStatus.Capability.LOCALMODE), status);
+        assertEquals(status, status.addCapabilities(ServerStatus.Capability.LOCALMODE));
         assertTrue(status.hasCapabilities(ServerStatus.Capability.MASTER, ServerStatus.Capability.LOCALMODE));
     }
 
@@ -185,7 +185,7 @@ public class ServerStatusTest {
     public void testPauseMessageProcessing() throws Exception {
         status.pauseMessageProcessing();
 
-        assertEquals(status.getLifecycle(), Lifecycle.PAUSED);
+        assertEquals(Lifecycle.PAUSED, status.getLifecycle());
         assertTrue(status.processingPauseLocked());
     }
 
@@ -193,7 +193,7 @@ public class ServerStatusTest {
     public void testPauseMessageProcessingWithLock() throws Exception {
         status.pauseMessageProcessing(true);
 
-        assertEquals(status.getLifecycle(), Lifecycle.PAUSED);
+        assertEquals(Lifecycle.PAUSED, status.getLifecycle());
         assertTrue(status.processingPauseLocked());
     }
 
@@ -201,7 +201,7 @@ public class ServerStatusTest {
     public void testPauseMessageProcessingWithoutLock() throws Exception {
         status.pauseMessageProcessing(false);
 
-        assertEquals(status.getLifecycle(), Lifecycle.PAUSED);
+        assertEquals(Lifecycle.PAUSED, status.getLifecycle());
         assertFalse(status.processingPauseLocked());
     }
 
@@ -218,7 +218,7 @@ public class ServerStatusTest {
         status.pauseMessageProcessing(false);
         status.resumeMessageProcessing();
 
-        assertEquals(status.getLifecycle(), Lifecycle.RUNNING);
+        assertEquals(Lifecycle.RUNNING, status.getLifecycle());
     }
 
     @Test(expected = ProcessingPauseLockedException.class)

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.map.geoip;
 
@@ -32,7 +32,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import java.net.URISyntaxException;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,10 +47,12 @@ import static org.mockito.Mockito.when;
 public class MaxmindDataAdapterTest {
     private static final String GEO_LITE2_CITY_MMDB = "/GeoLite2-City.mmdb";
     private static final String GEO_LITE2_COUNTRY_MMDB = "/GeoLite2-Country.mmdb";
+    private static final String GEO_LITE2_ASN_MMDB = "/GeoLite2-ASN.mmdb";
 
-    private static final Map<DatabaseType, String> DB_PATH = ImmutableMap.of(
+    private static final ImmutableMap<DatabaseType, String> DB_PATH = ImmutableMap.of(
             DatabaseType.MAXMIND_CITY, GEO_LITE2_CITY_MMDB,
-            DatabaseType.MAXMIND_COUNTRY, GEO_LITE2_COUNTRY_MMDB
+            DatabaseType.MAXMIND_COUNTRY, GEO_LITE2_COUNTRY_MMDB,
+            DatabaseType.MAXMIND_ASN, GEO_LITE2_ASN_MMDB
     );
 
     abstract static class Base {
@@ -204,6 +205,33 @@ public class MaxmindDataAdapterTest {
             } finally {
                 adapter.setDatabaseReader(oldDatabaseReader);
             }
+        }
+    }
+
+    @RunWith(ConditionalRunner.class)
+    @ResourceExistsCondition(GEO_LITE2_ASN_MMDB)
+    public static class AsnDatabaseTest extends Base {
+        public AsnDatabaseTest() {
+            super(DatabaseType.MAXMIND_ASN);
+        }
+
+        @Test
+        public void doGetSuccessfullyResolvesGooglePublicDNSAddress() {
+            // This test will possibly get flaky when the entry for 8.8.8.8 changes!
+            final LookupResult lookupResult = adapter.doGet("8.8.8.8");
+            assertThat(lookupResult.singleValue()).isEqualTo(15169);
+            assertThat(lookupResult.multiValue())
+                    .extracting("as_number")
+                    .containsExactly(15169);
+            assertThat(lookupResult.multiValue())
+                    .extracting("as_organization")
+                    .containsExactly("Google LLC");
+        }
+
+        @Test
+        public void doGetReturnsEmptyResultOnPrivateIp() {
+            final LookupResult lookupResult = adapter.doGet("192.168.1.1");
+            assertThat(lookupResult).isEqualTo(LookupResult.empty());
         }
     }
 }

@@ -1,67 +1,58 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 
-import { ChangedMessageField, MessageField } from 'components/search';
+import { MessageField } from 'components/search';
+import { MessageDetailsDefinitionList } from 'components/graylog';
 
 class MessageFields extends React.Component {
   static propTypes = {
     customFieldActions: PropTypes.node,
-    disableFieldActions: PropTypes.bool,
     message: PropTypes.object.isRequired,
     renderForDisplay: PropTypes.func.isRequired,
-    showDecoration: PropTypes.bool,
   };
 
   static defaultProps = {
-    showDecoration: false,
+    customFieldActions: undefined,
   };
 
-  _formatFields = (fields, showDecoration) => {
-    const decorationStats = this.props.message.decoration_stats;
-
-    if (!showDecoration || !decorationStats) {
-      const decoratedFields = decorationStats ? Object.keys(decorationStats.changed_fields) : [];
-      return Object.keys(fields)
-        .sort()
-        .map((key) => {
-          return (
-            <MessageField key={key} {...this.props} fieldName={key} value={fields[key]}
-                               disableFieldActions={this.props.disableFieldActions || decoratedFields.indexOf(key) !== -1} />
-          );
-        });
-    }
-
-    const allKeys = Object.keys(decorationStats.removed_fields).concat(Object.keys(fields)).sort();
-
-    return allKeys.map((key) => {
-      if (decorationStats.added_fields[key]) {
-        return <ChangedMessageField key={key} fieldName={key} newValue={fields[key]} />;
-      }
-      if (decorationStats.changed_fields[key]) {
-        return (<ChangedMessageField key={key}
-                                     fieldName={key}
-                                     originalValue={decorationStats.changed_fields[key]}
-                                     newValue={fields[key]} />);
-      }
-
-      if (decorationStats.removed_fields[key]) {
-        return (<ChangedMessageField key={key}
-                                     fieldName={key}
-                                     originalValue={decorationStats.removed_fields[key]} />);
-      }
-
-      return <MessageField key={key} {...this.props} fieldName={key} value={fields[key]} disableFieldActions />;
-    });
+  _formatFields = (fields) => {
+    return Object.keys(fields)
+      .sort()
+      .map((key) => {
+        return (
+          <MessageField key={key}
+                        {...this.props}
+                        fieldName={key}
+                        value={fields[key]} />
+        );
+      });
   };
 
   render() {
-    const formattedFields = this.props.message.formatted_fields;
-    const fields = this._formatFields(formattedFields, this.props.showDecoration);
+    const { message } = this.props;
+    const formattedFields = message.formatted_fields;
+    const fields = this._formatFields(formattedFields);
 
     return (
-      <dl className="message-details message-details-fields">
+      <MessageDetailsDefinitionList className="message-details-fields">
         {fields}
-      </dl>
+      </MessageDetailsDefinitionList>
     );
   }
 }

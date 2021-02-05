@@ -1,31 +1,76 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert, Button } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import styled, { css } from 'styled-components';
 
+import { LinkContainer } from 'components/graylog/router';
 import Routes from 'routing/Routes';
-
+import { Button, Col, Panel, Row } from 'components/graylog';
+import { Icon } from 'components/common';
 import LoaderTabs from 'components/messageloaders/LoaderTabs';
 import MatchingTypeSwitcher from 'components/streams/MatchingTypeSwitcher';
 import StreamRuleList from 'components/streamrules/StreamRuleList';
 import StreamRuleForm from 'components/streamrules/StreamRuleForm';
 import Spinner from 'components/common/Spinner';
-
 import StoreProvider from 'injection/StoreProvider';
+
 const StreamsStore = StoreProvider.getStore('Streams');
 const StreamRulesStore = StoreProvider.getStore('StreamRules');
 
+const StreamAlertHeader = styled(Panel.Heading)`
+  font-weight: bold;
+`;
+
+const MatchIcon = styled(({ empty, matches, ...props }) => <Icon {...props} />)(
+  ({ empty, matches, theme }) => {
+    const matchColor = matches ? theme.colors.variant.success : theme.colors.variant.danger;
+
+    return css`
+      color: ${empty ? theme.colors.variant.info : matchColor};
+      margin-right: 3px;
+    `;
+  },
+);
+
+const StyledSpinner = styled(Spinner)`
+  margin-left: 10px;
+`;
+
 class StreamRulesEditor extends React.Component {
-  static propTypes() {
-    return {
-      currentUser: PropTypes.object.isRequired,
-      streamId: PropTypes.string.isRequired,
-      messageId: PropTypes.string,
-      index: PropTypes.string,
-    };
+  static propTypes = {
+    currentUser: PropTypes.object.isRequired,
+    streamId: PropTypes.string.isRequired,
+    messageId: PropTypes.string,
+    index: PropTypes.string,
   }
 
-  state = {};
+  static defaultProps = {
+    messageId: '',
+    index: '',
+  }
+
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      showStreamRuleForm: false,
+    };
+  }
 
   componentDidMount() {
     this.loadData();
@@ -40,8 +85,11 @@ class StreamRulesEditor extends React.Component {
 
   onMessageLoaded = (message) => {
     this.setState({ message: message });
+
     if (message !== undefined) {
-      StreamsStore.testMatch(this.props.streamId, { message: message.fields }, (resultData) => {
+      const { streamId } = this.props;
+
+      StreamsStore.testMatch(streamId, { message: message.fields }, (resultData) => {
         this.setState({ matchData: resultData });
       });
     } else {
@@ -50,26 +98,31 @@ class StreamRulesEditor extends React.Component {
   };
 
   loadData = () => {
+    const { streamId } = this.props;
+    const { message } = this.state;
+
     StreamRulesStore.types().then((types) => {
       this.setState({ streamRuleTypes: types });
     });
 
-    StreamsStore.get(this.props.streamId, (stream) => {
+    StreamsStore.get(streamId, (stream) => {
       this.setState({ stream: stream });
     });
 
-    if (this.state.message) {
-      this.onMessageLoaded(this.state.message);
+    if (message) {
+      this.onMessageLoaded(message);
     }
   };
 
   _onStreamRuleFormSubmit = (streamRuleId, data) => {
-    StreamRulesStore.create(this.props.streamId, data, () => {});
+    const { streamId } = this.props;
+
+    StreamRulesStore.create(streamId, data, () => {});
   };
 
   _onAddStreamRule = (event) => {
     event.preventDefault();
-    this.refs.newStreamRuleForm.open();
+    this.setState({ showStreamRuleForm: true });
   };
 
   _getListClassName = (matchData) => {
@@ -77,76 +130,90 @@ class StreamRulesEditor extends React.Component {
   };
 
   _explainMatchResult = () => {
-    if (this.state.matchData) {
-      if (this.state.matchData.matches) {
+    const { matchData } = this.state;
+
+    if (matchData) {
+      if (matchData.matches) {
         return (
-          <span>
-            <i className="fa fa-check" style={{ color: 'green' }} /> This message would be routed to this stream.
-          </span>);
+          <>
+            <MatchIcon matches name="check" /> This message would be routed to this stream!
+          </>
+        );
       }
+
       return (
-        <span>
-          <i className="fa fa-remove" style={{ color: 'red' }} /> This message would not be routed to this stream.
-          </span>);
+        <>
+          <MatchIcon name="times" /> This message would not be routed to this stream.
+        </>
+      );
     }
-    return ('Please load a message to check if it would match against these rules and therefore be routed into this stream.');
+
+    return (
+      <>
+        <MatchIcon empty name="exclamation-circle" /> Please load a message in Step 1 above to check if it would match against these rules.
+      </>
+    );
   };
 
   render() {
-    const styles = (this.state.matchData ? this._getListClassName(this.state.matchData) : 'info');
-    if (this.state.stream && this.state.streamRuleTypes) {
+    const { matchData, stream, streamRuleTypes, showStreamRuleForm } = this.state;
+    const { currentUser, messageId, index } = this.props;
+    const styles = (matchData ? this._getListClassName(matchData) : 'info');
+
+    if (stream && streamRuleTypes) {
       return (
-        <div className="row content">
-          <div className="col-md-12 streamrule-sample-message">
-            <h2>
-              1. Load a message to test rules
-            </h2>
+        <Row className="content">
+          <Col md={12} className="streamrule-sample-message">
+            <h2>1. Load a message to test rules</h2>
 
             <div className="stream-loader">
-              <LoaderTabs messageId={this.props.messageId} index={this.props.index} onMessageLoaded={this.onMessageLoaded} />
-            </div>
-
-            <div className="spinner" style={{ display: 'none' }}><h2><i
-              className="fa fa-spinner fa-spin" /> &nbsp;Loading message</h2></div>
-
-            <div className="sample-message-display" style={{ display: 'none', marginTop: '5px' }}>
-              <strong>Next step:</strong>
-              Add/delete/modify stream rules in step 2 and see if the example message would have been
-              routed into the stream or not. Use the button on the right to add a stream rule.
+              <LoaderTabs messageId={messageId}
+                          index={index}
+                          onMessageLoaded={this.onMessageLoaded} />
             </div>
 
             <hr />
 
             <div className="buttons pull-right">
-              <button className="btn btn-success show-stream-rule" onClick={this._onAddStreamRule}>
+              <Button bsStyle="success"
+                      className="show-stream-rule"
+                      onClick={this._onAddStreamRule}>
                 Add stream rule
-              </button>
-              <StreamRuleForm ref="newStreamRuleForm" title="New Stream Rule"
-                              streamRuleTypes={this.state.streamRuleTypes} onSubmit={this._onStreamRuleFormSubmit} />
+              </Button>
+              { showStreamRuleForm && (
+                <StreamRuleForm title="New Stream Rule"
+                                onClose={() => this.setState({ showStreamRuleForm: false })}
+                                streamRuleTypes={streamRuleTypes}
+                                onSubmit={this._onStreamRuleFormSubmit} />
+              ) }
             </div>
 
-            <h2>
-              2. Manage stream rules
-            </h2>
+            <h2>2. Manage stream rules</h2>
 
-            {this._explainMatchResult()}
+            <MatchingTypeSwitcher stream={stream} onChange={this.loadData} />
+            <Panel bsStyle={styles}>
+              <StreamAlertHeader>{this._explainMatchResult()}</StreamAlertHeader>
+              <StreamRuleList stream={stream}
+                              streamRuleTypes={streamRuleTypes}
+                              permissions={currentUser.permissions}
+                              matchData={matchData} />
+            </Panel>
 
-            <MatchingTypeSwitcher stream={this.state.stream} onChange={this.loadData} />
-            <Alert ref="well" bsStyle={styles}>
-              <StreamRuleList stream={this.state.stream} streamRuleTypes={this.state.streamRuleTypes}
-                              permissions={this.props.currentUser.permissions} matchData={this.state.matchData} />
-            </Alert>
-
-            <p style={{ marginTop: '10px' }}>
+            <p>
               <LinkContainer to={Routes.STREAMS}>
-                <Button bsStyle="success">I'm done!</Button>
+                <Button bsStyle="success">I&apos;m done!</Button>
               </LinkContainer>
             </p>
-          </div>
-        </div>
+          </Col>
+        </Row>
       );
     }
-    return (<div className="row content"><div style={{ marginLeft: 10 }}><Spinner /></div></div>);
+
+    return (
+      <Row className="content">
+        <StyledSpinner />
+      </Row>
+    );
   }
 }
 

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.parser;
 
@@ -21,7 +21,6 @@ import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -94,14 +93,14 @@ import org.joda.time.Period;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.Stack;
 import java.util.concurrent.atomic.AtomicLong;
-
-import javax.inject.Inject;
 
 import static com.google.common.collect.ImmutableSortedSet.orderedBy;
 import static java.util.Comparator.comparingInt;
@@ -276,7 +275,7 @@ public class PipelineRuleParser {
         private final Set<String> definedVars = Sets.newHashSet();
 
         // this is true for nested field accesses
-        private Stack<Boolean> isIdIsFieldAccess = new Stack<>();
+        private ArrayDeque<Boolean> isIdIsFieldAccess = new ArrayDeque<>();
 
         public RuleAstBuilder(ParseContext parseContext) {
             this.parseContext = parseContext;
@@ -348,7 +347,7 @@ public class PipelineRuleParser {
                                 params.stream()
                                         .filter(p -> !p.optional())
                                         .map(p -> givenArguments.containsKey(p.name()) ? null : p)
-                                        .filter(p -> p != null)
+                                        .filter(Objects::nonNull)
                                         .collect(toList());
                         for (ParameterDescriptor param : missingParams) {
                             parseContext.addError(new MissingRequiredParam(ctx, function, param));
@@ -382,6 +381,14 @@ public class PipelineRuleParser {
                         if (requiredAfterOptional) {
                             parseContext.addError(new OptionalParametersMustBeNamed(ctx, function));
                             hasError = true;
+                        } else {
+                            final long numberRequiredParams = params.stream()
+                                    .filter(p -> !p.optional())
+                                    .count();
+                            if (numberRequiredParams > positionalArgs.size()) {
+                                parseContext.addError(new WrongNumberOfArgs(ctx, function, positionalArgs.size()));
+                                hasError = true;
+                            }
                         }
                     }
 
@@ -664,7 +671,7 @@ public class PipelineRuleParser {
         }
     }
 
-    private class RuleTypeAnnotator extends RuleLangBaseListener {
+    private static class RuleTypeAnnotator extends RuleLangBaseListener {
         private final ParseContext parseContext;
 
         public RuleTypeAnnotator(ParseContext parseContext) {
@@ -727,8 +734,9 @@ public class PipelineRuleParser {
         }
     }
 
-    private class RuleTypeChecker extends RuleLangBaseListener {
+    private static class RuleTypeChecker extends RuleLangBaseListener {
         private final ParseContext parseContext;
+        @SuppressWarnings("JdkObsolete")
         StringBuffer sb = new StringBuffer();
 
         public RuleTypeChecker(ParseContext parseContext) {
@@ -751,6 +759,15 @@ public class PipelineRuleParser {
         }
 
         @Override
+        public void exitNot(RuleLangParser.NotContext ctx) {
+            final Expression expression = parseContext.expressions().get(ctx.expression());
+            Class type = expression.getType();
+            if (!Boolean.class.isAssignableFrom(type)) {
+                parseContext.addError(new IncompatibleType(ctx, Boolean.class, type));
+            }
+        }
+
+        @Override
         public void exitComparison(RuleLangParser.ComparisonContext ctx) {
             checkBinaryExpression(ctx);
         }
@@ -766,12 +783,20 @@ public class PipelineRuleParser {
             final boolean rightDate = DateTime.class.equals(rightType);
             final boolean leftPeriod = Period.class.equals(leftType);
             final boolean rightPeriod = Period.class.equals(rightType);
+            final boolean leftString = String.class.equals(leftType);
+            final boolean rightString = String.class.equals(rightType);
+
             if (leftDate && rightDate) {
                 if (addExpression.isPlus()) {
                     parseContext.addError(new InvalidOperation(ctx, addExpression, "Unable to add two dates"));
                 }
                 return;
             } else if (leftDate && rightPeriod || leftPeriod && rightDate || leftPeriod && rightPeriod) {
+                return;
+            } else if (leftString && rightString) {
+                if (!addExpression.isPlus()) {
+                    parseContext.addError(new InvalidOperation(ctx, addExpression, "Unable to subtract two strings"));
+                }
                 return;
             }
             // otherwise check generic binary expression
@@ -959,7 +984,7 @@ public class PipelineRuleParser {
         }
     }
 
-    private class PipelineAstBuilder extends RuleLangBaseListener {
+    private static class PipelineAstBuilder extends RuleLangBaseListener {
         private final ParseContext parseContext;
 
         public PipelineAstBuilder(ParseContext parseContext) {

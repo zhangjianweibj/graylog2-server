@@ -1,56 +1,54 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.extractors;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import oi.thekraken.grok.api.Grok;
-import oi.thekraken.grok.api.Match;
-import oi.thekraken.grok.api.exception.GrokException;
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.Match;
 import org.graylog2.ConfigurationException;
-import org.graylog2.grok.GrokPattern;
+import org.graylog2.grok.GrokPatternRegistry;
 import org.graylog2.plugin.inputs.Converter;
 import org.graylog2.plugin.inputs.Extractor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class GrokExtractor extends Extractor {
-    private static final Logger log = LoggerFactory.getLogger(GrokExtractor.class);
+    public static final String CONFIG_GROK_PATTERN = "grok_pattern";
 
-    private final Grok grok = new Grok();
+    private GrokPatternRegistry grokPatternRegistry;
+    private String pattern;
+    private boolean namedCapturesOnly;
 
-    public GrokExtractor(MetricRegistry metricRegistry,
-                         Set<GrokPattern> grokPatterns,
-                         String id,
-                         String title,
-                         long order,
-                         CursorStrategy cursorStrategy,
-                         String sourceField,
-                         String targetField,
-                         Map<String, Object> extractorConfig,
-                         String creatorUserId,
-                         List<Converter> converters,
-                         ConditionType conditionType,
-                         String conditionValue) throws ReservedFieldException, ConfigurationException {
+    GrokExtractor(MetricRegistry metricRegistry,
+                  GrokPatternRegistry grokPatternRegistry,
+                  String id,
+                  String title,
+                  long order,
+                  CursorStrategy cursorStrategy,
+                  String sourceField,
+                  String targetField,
+                  Map<String, Object> extractorConfig,
+                  String creatorUserId,
+                  List<Converter> converters,
+                  ConditionType conditionType,
+                  String conditionValue) throws ReservedFieldException, ConfigurationException {
         super(metricRegistry,
               id,
               title,
@@ -64,33 +62,23 @@ public class GrokExtractor extends Extractor {
               converters,
               conditionType,
               conditionValue);
-        if (extractorConfig == null || Strings.isNullOrEmpty((String) extractorConfig.get("grok_pattern"))) {
+        if (extractorConfig == null || Strings.isNullOrEmpty((String) extractorConfig.get(CONFIG_GROK_PATTERN))) {
             throw new ConfigurationException("grok_pattern not set");
         }
 
-        final boolean namedCapturesOnly = (boolean) extractorConfig.getOrDefault("named_captures_only", false);
-
-        try {
-            // TODO we should really share this somehow, but unfortunately the extractors are reloaded every second.
-            for (final GrokPattern grokPattern : grokPatterns) {
-                grok.addPattern(grokPattern.name(), grokPattern.pattern());
-            }
-
-            grok.compile((String) extractorConfig.get("grok_pattern"), namedCapturesOnly);
-        } catch (GrokException e) {
-            log.error("Unable to parse grok patterns", e);
-            throw new ConfigurationException("Unable to parse grok patterns");
-        }
+        this.grokPatternRegistry = grokPatternRegistry;
+        this.pattern = (String) extractorConfig.get(CONFIG_GROK_PATTERN);
+        this.namedCapturesOnly = (boolean) extractorConfig.getOrDefault("named_captures_only", false);
     }
 
     @Override
     protected Result[] run(String value) {
+        final Grok grok = grokPatternRegistry.cachedGrokForPattern(this.pattern, this.namedCapturesOnly);
 
         // the extractor instance is rebuilt every second anyway
         final Match match = grok.match(value);
-        match.captures();
-        final Map<String, Object> matches = match.toMap();
-        final List<Result> results = Lists.newArrayListWithCapacity(matches.size());
+        final Map<String, Object> matches = match.captureFlattened();
+        final List<Result> results = new ArrayList<>(matches.size());
 
         for (final Map.Entry<String, Object> entry : matches.entrySet()) {
             // never add null values to the results, those don't make sense for us
@@ -99,6 +87,6 @@ public class GrokExtractor extends Extractor {
             }
         }
 
-        return results.toArray(new Result[results.size()]);
+        return results.toArray(new Result[0]);
     }
 }

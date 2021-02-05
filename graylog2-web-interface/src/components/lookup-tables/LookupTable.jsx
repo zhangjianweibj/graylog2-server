@@ -1,14 +1,28 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, ButtonToolbar, Row, Col } from 'react-bootstrap';
-import { Input } from 'components/bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Link } from 'react-router';
-import Routes from 'routing/Routes';
 
+import { LinkContainer, Link } from 'components/graylog/router';
+import { ButtonToolbar, Row, Col, Button } from 'components/graylog';
+import { Input } from 'components/bootstrap';
+import Routes from 'routing/Routes';
 import FormsUtils from 'util/FormsUtils';
 import { ContentPackMarker } from 'components/common';
-
 import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
@@ -36,6 +50,7 @@ class LookupTable extends React.Component {
 
   _onPurgeKey = (e) => {
     e.preventDefault();
+
     if (this.state.purgeKey && this.state.purgeKey.length > 0) {
       LookupTablesActions.purgeKey(this.props.table, this.state.purgeKey);
     }
@@ -48,6 +63,7 @@ class LookupTable extends React.Component {
 
   _lookupKey = (e) => {
     e.preventDefault();
+
     LookupTablesActions.lookup(this.props.table.name, this.state.lookupKey).then((result) => {
       this.setState({ lookupResult: result });
     });
@@ -74,13 +90,15 @@ class LookupTable extends React.Component {
             <Button bsStyle="success">Edit</Button>
           </LinkContainer>
           {
-            (this.props.table.default_single_value || this.props.table.default_multi_value) &&
+            (this.props.table.default_single_value || this.props.table.default_multi_value)
+            && (
             <dl>
               <dt>Default single value</dt>
               <dd><code>{this.props.table.default_single_value}</code>{' '}({this.props.table.default_single_value_type.toLowerCase()})</dd>
               <dt>Default multi value</dt>
               <dd><code>{this.props.table.default_multi_value}</code>{' '}({this.props.table.default_multi_value_type.toLowerCase()})</dd>
             </dl>
+            )
           }
           <hr />
           <h2>Purge Cache</h2>

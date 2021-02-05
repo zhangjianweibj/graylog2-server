@@ -1,20 +1,19 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
-
 package org.graylog2.indexer.rotation.strategies;
 
 import org.graylog2.audit.AuditEventSender;
@@ -38,6 +37,7 @@ import org.mockito.junit.MockitoRule;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.joda.time.Period.minutes;
 import static org.joda.time.Period.seconds;
 import static org.junit.Assert.assertEquals;
@@ -86,6 +86,19 @@ public class TimeBasedRotationStrategyTest {
     }
 
     @Test
+    public void anchorCalculationShouldWorkWhenLastAnchorIsNotUTC() {
+        final DateTime initialTime = new DateTime(2020, 7, 31, 14, 48, 35, 0, DateTimeZone.UTC);
+
+        final InstantMillisProvider clock = new InstantMillisProvider(initialTime);
+        DateTimeUtils.setCurrentMillisProvider(clock);
+
+        Period period = Period.months(1);
+        DateTime lastAnchor = initialTime.minusHours(1).withZone(DateTimeZone.forOffsetHours(2));
+        final DateTime monthAnchor = TimeBasedRotationStrategy.determineRotationPeriodAnchor(lastAnchor, period);
+        assertThat(monthAnchor).isEqualTo(DateTime.parse("2020-07-01T00:00:00.000Z"));
+    }
+
+    @Test
     public void determineAnchor() {
         final DateTime initialTime = new DateTime(2014, 3, 15, 14, 48, 35, 0, DateTimeZone.UTC);
 
@@ -96,44 +109,44 @@ public class TimeBasedRotationStrategyTest {
         // should snap to 14:00:00
         period = Period.hours(1);
         final DateTime hourAnchor = TimeBasedRotationStrategy.determineRotationPeriodAnchor(null, period);
-        assertEquals(hourAnchor.getHourOfDay(), 14);
-        assertEquals(hourAnchor.getMinuteOfHour(), 0);
-        assertEquals(hourAnchor.getSecondOfMinute(), 0);
+        assertEquals(14, hourAnchor.getHourOfDay());
+        assertEquals(0, hourAnchor.getMinuteOfHour());
+        assertEquals(0, hourAnchor.getSecondOfMinute());
 
         // should snap to 14:45:00
         period = minutes(5);
         final DateTime fiveMins = TimeBasedRotationStrategy.determineRotationPeriodAnchor(null, period);
-        assertEquals(fiveMins.getHourOfDay(), 14);
-        assertEquals(fiveMins.getMinuteOfHour(), 45);
-        assertEquals(fiveMins.getSecondOfMinute(), 0);
+        assertEquals(14, fiveMins.getHourOfDay());
+        assertEquals(45, fiveMins.getMinuteOfHour());
+        assertEquals(0, fiveMins.getSecondOfMinute());
 
         // should snap to 2014-3-15 00:00:00
         period = Period.days(1).withHours(6);
         final DateTime dayAnd6Hours = TimeBasedRotationStrategy.determineRotationPeriodAnchor(null, period);
-        assertEquals(dayAnd6Hours.getYear(), 2014);
-        assertEquals(dayAnd6Hours.getMonthOfYear(), 3);
-        assertEquals(dayAnd6Hours.getDayOfMonth(), 15);
-        assertEquals(dayAnd6Hours.getHourOfDay(), 0);
-        assertEquals(dayAnd6Hours.getMinuteOfHour(), 0);
-        assertEquals(dayAnd6Hours.getSecondOfMinute(), 0);
+        assertEquals(2014, dayAnd6Hours.getYear());
+        assertEquals(3, dayAnd6Hours.getMonthOfYear());
+        assertEquals(15, dayAnd6Hours.getDayOfMonth());
+        assertEquals(0, dayAnd6Hours.getHourOfDay());
+        assertEquals(0, dayAnd6Hours.getMinuteOfHour());
+        assertEquals(0, dayAnd6Hours.getSecondOfMinute());
 
         period = Period.days(30);
         final DateTime thirtyDays = TimeBasedRotationStrategy.determineRotationPeriodAnchor(null, period);
-        assertEquals(thirtyDays.getYear(), 2014);
-        assertEquals(thirtyDays.getMonthOfYear(), 2);
-        assertEquals(thirtyDays.getDayOfMonth(), 17);
-        assertEquals(thirtyDays.getHourOfDay(), 0);
-        assertEquals(thirtyDays.getMinuteOfHour(), 0);
-        assertEquals(thirtyDays.getSecondOfMinute(), 0);
+        assertEquals(2014, thirtyDays.getYear());
+        assertEquals(2, thirtyDays.getMonthOfYear());
+        assertEquals(17, thirtyDays.getDayOfMonth());
+        assertEquals(0, thirtyDays.getHourOfDay());
+        assertEquals(0, thirtyDays.getMinuteOfHour());
+        assertEquals(0, thirtyDays.getSecondOfMinute());
 
         period = Period.hours(1);
         final DateTime diffAnchor = TimeBasedRotationStrategy.determineRotationPeriodAnchor(initialTime.minusMinutes(61), period);
-        assertEquals(diffAnchor.getYear(), 2014);
-        assertEquals(diffAnchor.getMonthOfYear(), 3);
-        assertEquals(diffAnchor.getDayOfMonth(), 15);
-        assertEquals(diffAnchor.getHourOfDay(), 13);
-        assertEquals(diffAnchor.getMinuteOfHour(), 0);
-        assertEquals(diffAnchor.getSecondOfMinute(), 0);
+        assertEquals(2014, diffAnchor.getYear());
+        assertEquals(3, diffAnchor.getMonthOfYear());
+        assertEquals(15, diffAnchor.getDayOfMonth());
+        assertEquals(13, diffAnchor.getHourOfDay());
+        assertEquals(0, diffAnchor.getMinuteOfHour());
+        assertEquals(0, diffAnchor.getSecondOfMinute());
 
     }
 
@@ -326,7 +339,7 @@ public class TimeBasedRotationStrategyTest {
 
         when(indexSetConfig1.id()).thenReturn("id1");
         when(indexSetConfig2.id()).thenReturn("id2");
-        
+
         when(indexSet1.getConfig()).thenReturn(indexSetConfig1);
         when(indexSet2.getConfig()).thenReturn(indexSetConfig2);
 

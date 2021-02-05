@@ -1,42 +1,45 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.lookup.dto;
 
-import com.google.auto.value.AutoValue;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-
+import com.google.auto.value.AutoValue;
 import org.graylog.autovalue.WithBeanGetter;
 import org.graylog2.plugin.lookup.LookupDataAdapterConfiguration;
 import org.mongojack.Id;
 import org.mongojack.ObjectId;
 
 import javax.annotation.Nullable;
+import java.util.concurrent.TimeUnit;
 
 @AutoValue
 @WithBeanGetter
-@JsonDeserialize(builder = AutoValue_DataAdapterDto.Builder.class)
+@JsonDeserialize(builder = DataAdapterDto.Builder.class)
 public abstract class DataAdapterDto {
 
     public static final String FIELD_ID = "id";
     public static final String FIELD_TITLE = "title";
     public static final String FIELD_DESCRIPTION = "description";
     public static final String FIELD_NAME = "name";
+    public static final String FIELD_CUSTOM_ERROR_TTL = "custom_error_ttl";
+    public static final String FIELD_CUSTOM_ERROR_TTL_ENABLED = "custom_error_ttl_enabled";
+    public static final String FIELD_CUSTOM_ERROR_TTL_UNIT = "custom_error_ttl_unit";
 
     @Id
     @ObjectId
@@ -53,6 +56,18 @@ public abstract class DataAdapterDto {
     @JsonProperty(FIELD_NAME)
     public abstract String name();
 
+    @Nullable
+    @JsonProperty(FIELD_CUSTOM_ERROR_TTL_ENABLED)
+    public abstract Boolean customErrorTTLEnabled();
+
+    @Nullable
+    @JsonProperty(FIELD_CUSTOM_ERROR_TTL)
+    public abstract Long customErrorTTL();
+
+    @Nullable
+    @JsonProperty(FIELD_CUSTOM_ERROR_TTL_UNIT)
+    public abstract TimeUnit customErrorTTLUnit();
+
     @JsonProperty("content_pack")
     @Nullable
     public abstract String contentPack();
@@ -66,6 +81,11 @@ public abstract class DataAdapterDto {
 
     @AutoValue.Builder
     public abstract static class Builder {
+        @JsonCreator
+        public static Builder create() {
+            return new AutoValue_DataAdapterDto.Builder()
+                    .customErrorTTLEnabled(false);
+        }
 
         @Id
         @ObjectId
@@ -80,6 +100,15 @@ public abstract class DataAdapterDto {
 
         @JsonProperty(FIELD_NAME)
         public abstract Builder name(String name);
+
+        @JsonProperty(FIELD_CUSTOM_ERROR_TTL_ENABLED)
+        public abstract Builder customErrorTTLEnabled(@Nullable Boolean enabled);
+
+        @JsonProperty(FIELD_CUSTOM_ERROR_TTL)
+        public abstract Builder customErrorTTL(@Nullable Long ttl);
+
+        @JsonProperty(FIELD_CUSTOM_ERROR_TTL_UNIT)
+        public abstract Builder customErrorTTLUnit(@Nullable TimeUnit unit);
 
         @JsonProperty("content_pack")
         public abstract Builder contentPack(@Nullable String contentPack);

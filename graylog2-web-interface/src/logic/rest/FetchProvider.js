@@ -1,33 +1,68 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import request from 'superagent-bluebird-promise';
 import BluebirdPromise from 'bluebird';
 
+import FetchError from 'logic/errors/FetchError';
+import ErrorsActions from 'actions/errors/ErrorsActions';
 import StoreProvider from 'injection/StoreProvider';
-
 import ActionsProvider from 'injection/ActionsProvider';
-
+// eslint-disable-next-line import/no-cycle
+import { createFromFetchError } from 'logic/errors/ReportedErrors';
 import Routes from 'routing/Routes';
 import history from 'util/History';
 
-export class FetchError extends Error {
-  constructor(message, additional) {
-    super(message);
-    this.message = message || (additional.message || 'Undefined error.');
-    /* eslint-disable no-console */
-    try {
-      console.error(`There was an error fetching a resource: ${this.message}.`,
-        `Additional information: ${additional.body && additional.body.message ? additional.body.message : 'Not available'}`);
-    } catch (e) {
-      console.error(`There was an error fetching a resource: ${this.message}. No additional information available.`);
-    }
-    /* eslint-enable no-console */
+const reportServerSuccess = () => {
+  const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
 
-    this.additional = additional;
+  ServerAvailabilityActions.reportSuccess();
+};
+
+const defaultOnUnauthorizedError = (error) => ErrorsActions.report(createFromFetchError(error));
+
+const onServerError = (error, onUnauthorized = defaultOnUnauthorizedError) => {
+  const SessionStore = StoreProvider.getStore('Session');
+  const fetchError = new FetchError(error.statusText, error);
+
+  if (SessionStore.isLoggedIn() && error.status === 401) {
+    const SessionActions = ActionsProvider.getActions('Session');
+
+    SessionActions.logout(SessionStore.getSessionId());
   }
-}
+
+  // Redirect to the start page if a user is logged in but not allowed to access a certain HTTP API.
+  if (SessionStore.isLoggedIn() && error.status === 403) {
+    onUnauthorized(fetchError);
+  }
+
+  if (error.originalError && !error.originalError.status) {
+    const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
+
+    ServerAvailabilityActions.reportError(fetchError);
+  }
+
+  throw fetchError;
+};
 
 export class Builder {
   constructor(method, url) {
-    this.request = request(method, url.replace(/([^:])\/\//, '$1/')).set('X-Requested-With', 'XMLHttpRequest');
+    this.request = request(method, url.replace(/([^:])\/\//, '$1/'))
+      .set('X-Requested-With', 'XMLHttpRequest')
+      .set('X-Requested-By', 'XMLHttpRequest');
   }
 
   authenticated() {
@@ -56,67 +91,51 @@ export class Builder {
       .accept('json')
       .then((resp) => {
         if (resp.ok) {
-          const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
-          ServerAvailabilityActions.reportSuccess();
+          reportServerSuccess();
+
           return resp.body;
         }
 
         throw new FetchError(resp.statusText, resp);
-      }, (error) => {
-        const SessionStore = StoreProvider.getStore('Session');
-        if (SessionStore.isLoggedIn() && error.status === 401) {
-          const SessionActions = ActionsProvider.getActions('Session');
-          SessionActions.logout(SessionStore.getSessionId());
+      }, (error) => onServerError(error));
+
+    return this;
+  }
+
+  file(body, mimeType) {
+    this.request = this.request
+      .send(body)
+      .type('json')
+      .accept(mimeType)
+      .then((resp) => {
+        if (resp.ok) {
+          reportServerSuccess();
+
+          return resp.text;
         }
 
-        // Redirect to the start page if a user is logged in but not allowed to access a certain HTTP API.
-        if (SessionStore.isLoggedIn() && error.status === 403) {
-          history.replace(Routes.NOTFOUND);
-        }
-
-        if (error.originalError && !error.originalError.status) {
-          const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
-          ServerAvailabilityActions.reportError(error);
-        }
-
-        throw new FetchError(error.statusText, error);
-      });
+        throw new FetchError(resp.statusText, resp);
+      }, (error) => onServerError(error));
 
     return this;
   }
 
   plaintext(body) {
+    const onUnauthorized = () => history.replace(Routes.STARTPAGE);
+
     this.request = this.request
       .send(body)
       .type('text/plain')
       .accept('json')
       .then((resp) => {
         if (resp.ok) {
-          const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
-          ServerAvailabilityActions.reportSuccess();
+          reportServerSuccess();
+
           return resp.body;
         }
 
         throw new FetchError(resp.statusText, resp);
-      }, (error) => {
-        const SessionStore = StoreProvider.getStore('Session');
-        if (SessionStore.isLoggedIn() && error.status === 401) {
-          const SessionActions = ActionsProvider.getActions('Session');
-          SessionActions.logout(SessionStore.getSessionId());
-        }
-
-        // Redirect to the start page if a user is logged in but not allowed to access a certain HTTP API.
-        if (SessionStore.isLoggedIn() && error.status === 403) {
-          history.replace(Routes.STARTPAGE);
-        }
-
-        if (error.originalError && !error.originalError.status) {
-          const ServerAvailabilityActions = ActionsProvider.getActions('ServerAvailability');
-          ServerAvailabilityActions.reportError(error);
-        }
-
-        throw new FetchError(error.statusText, error);
-      });
+      }, (error) => onServerError(error, onUnauthorized));
 
     return this;
   }
@@ -138,6 +157,7 @@ function queuePromiseIfNotLoggedin(promise) {
   if (!SessionStore.isLoggedIn()) {
     return () => new BluebirdPromise((resolve, reject) => {
       const SessionActions = ActionsProvider.getActions('Session');
+
       SessionActions.login.completed.listen(() => {
         promise().then(resolve, reject);
       });
@@ -170,6 +190,15 @@ export function fetchPeriodically(method, url, body) {
     .authenticated()
     .noSessionExtension()
     .json(body)
+    .build();
+
+  return queuePromiseIfNotLoggedin(promise)();
+}
+
+export function fetchFile(method, url, body, mimeType = 'text/csv') {
+  const promise = () => new Builder(method, url)
+    .authenticated()
+    .file(body, mimeType)
     .build();
 
   return queuePromiseIfNotLoggedin(promise)();

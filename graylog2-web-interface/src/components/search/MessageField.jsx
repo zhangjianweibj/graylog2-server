@@ -1,59 +1,52 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 
-import createReactClass from 'create-react-class';
-
 import { MessageFieldDescription } from 'components/search';
 
-const MessageField = createReactClass({
-  displayName: 'MessageField',
+const SPECIAL_FIELDS = ['full_message', 'level'];
 
-  propTypes: {
-    customFieldActions: PropTypes.node,
-    disableFieldActions: PropTypes.bool,
-    fieldName: PropTypes.string.isRequired,
-    message: PropTypes.object.isRequired,
-    renderForDisplay: PropTypes.func.isRequired,
-    value: PropTypes.any.isRequired,
-  },
+const MessageField = ({ message, value, fieldName, customFieldActions, renderForDisplay }) => {
+  const innerValue = SPECIAL_FIELDS.indexOf(fieldName) !== -1 ? message.fields[fieldName] : value;
 
-  SPECIAL_FIELDS: ['full_message', 'level'],
+  return (
+    <span>
+      <dt key={`${fieldName}Title`}>{fieldName}</dt>
+      <MessageFieldDescription key={`${fieldName}Description`}
+                               message={message}
+                               fieldName={fieldName}
+                               fieldValue={innerValue}
+                               renderForDisplay={renderForDisplay}
+                               customFieldActions={customFieldActions} />
+    </span>
+  );
+};
 
-  _isAdded(key) {
-    const decorationStats = this.props.message.decoration_stats;
-    return decorationStats && decorationStats.added_fields && decorationStats.added_fields[key] !== undefined;
-  },
+MessageField.propTypes = {
+  customFieldActions: PropTypes.node,
+  fieldName: PropTypes.string.isRequired,
+  message: PropTypes.object.isRequired,
+  renderForDisplay: PropTypes.func.isRequired,
+  value: PropTypes.any.isRequired,
+};
 
-  _isChanged(key) {
-    const decorationStats = this.props.message.decoration_stats;
-    return decorationStats && decorationStats.changed_fields && decorationStats.changed_fields[key] !== undefined;
-  },
-
-  _isDecorated(key) {
-    return this._isAdded(key) || this._isChanged(key);
-  },
-
-  render() {
-    let innerValue = this.props.value;
-    const key = this.props.fieldName;
-    if (this.SPECIAL_FIELDS.indexOf(key) !== -1) {
-      innerValue = this.props.message.fields[key];
-    }
-
-    return (
-      <span>
-        <dt key={`${key}Title`}>{key}</dt>
-        <MessageFieldDescription key={`${key}Description`}
-                                 message={this.props.message}
-                                 fieldName={key}
-                                 fieldValue={innerValue}
-                                 renderForDisplay={this.props.renderForDisplay}
-                                 disableFieldActions={this._isAdded(key) || this.props.disableFieldActions}
-                                 customFieldActions={this.props.customFieldActions}
-                                 isDecorated={this._isDecorated(key)} />
-      </span>
-    );
-  },
-});
+MessageField.defaultProps = {
+  customFieldActions: undefined,
+};
 
 export default MessageField;

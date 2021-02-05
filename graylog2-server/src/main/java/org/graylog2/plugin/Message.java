@@ -1,23 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin;
 
 import com.codahale.metrics.Meter;
 import com.eaio.uuid.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -29,15 +30,24 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.net.InetAddresses;
 import org.graylog2.indexer.IndexSet;
+import org.graylog2.indexer.messages.Indexable;
 import org.graylog2.plugin.streams.Stream;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.net.InetAddress;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -53,15 +63,27 @@ import java.util.regex.Pattern;
 
 import static com.google.common.base.Predicates.equalTo;
 import static com.google.common.base.Predicates.not;
+import static org.graylog.schema.GraylogSchemaFields.FIELD_ILLUMINATE_EVENT_CATEGORY;
+import static org.graylog.schema.GraylogSchemaFields.FIELD_ILLUMINATE_EVENT_SUBCATEGORY;
+import static org.graylog.schema.GraylogSchemaFields.FIELD_ILLUMINATE_EVENT_TYPE;
+import static org.graylog.schema.GraylogSchemaFields.FIELD_ILLUMINATE_EVENT_TYPE_CODE;
+import static org.graylog.schema.GraylogSchemaFields.FIELD_ILLUMINATE_TAGS;
 import static org.graylog2.plugin.Tools.ES_DATE_FORMAT_FORMATTER;
 import static org.graylog2.plugin.Tools.buildElasticSearchTimeFormat;
 import static org.joda.time.DateTimeZone.UTC;
 
 @NotThreadSafe
-public class Message implements Messages {
+public class Message implements Messages, Indexable {
     private static final Logger LOG = LoggerFactory.getLogger(Message.class);
 
+    /**
+     * The "_id" is used as document ID to address the document in Elasticsearch.
+     * TODO: We might want to use the "gl2_message_id" for this in the future to reduce storage and avoid having
+     *       basically two different message IDs. To do that we have to check if switching to a different ID format
+     *       breaks anything with regard to expectations in other code and existing data in Elasticsearch.
+     */
     public static final String FIELD_ID = "_id";
+
     public static final String FIELD_MESSAGE = "message";
     public static final String FIELD_FULL_MESSAGE = "full_message";
     public static final String FIELD_SOURCE = "source";
@@ -69,21 +91,132 @@ public class Message implements Messages {
     public static final String FIELD_LEVEL = "level";
     public static final String FIELD_STREAMS = "streams";
 
+    /**
+     * Graylog is writing internal metadata to messages using this field prefix. Users must not use this prefix for
+     * custom message fields.
+     */
+    public static final String INTERNAL_FIELD_PREFIX = "gl2_";
+
+    /**
+     * Will be set to the accounted message size in bytes.
+     */
+    public static final String FIELD_GL2_ACCOUNTED_MESSAGE_SIZE = "gl2_accounted_message_size";
+
+    /**
+     * This is the message ID. It will be set to a {@link de.huxhorn.sulky.ulid.ULID} during processing.
+     * <p></p>
+     * <b>Attention:</b> This is currently NOT the "_id" field which is used as ID for the document in Elasticsearch!
+     * <p></p>
+     * <h3>Implementation notes</h3>
+     * We are not using the UUID in "_id" for this field because of the following reasons:
+     * <ul>
+     *     <li>Using ULIDs results in shorter IDs (26 characters for ULID vs 36 for UUID) and thus reduced storage usage</li>
+     *     <li>They are guaranteed to be lexicographically sortable (UUIDs are only lexicographically sortable when time-based ones are used)</li>
+     * </ul>
+     *
+     * See: https://github.com/Graylog2/graylog2-server/issues/5994
+     */
+    public static final String FIELD_GL2_MESSAGE_ID = "gl2_message_id";
+
+    /**
+     * Can be set when a message timestamp gets modified to preserve the original timestamp. (e.g. "clone_message" pipeline function)
+     */
+    public static final String FIELD_GL2_ORIGINAL_TIMESTAMP = "gl2_original_timestamp";
+
+    /**
+     * Can be set to indicate a message processing error. (e.g. set by the pipeline interpreter when an error occurs)
+     */
+    public static final String FIELD_GL2_PROCESSING_ERROR = "gl2_processing_error";
+
+    /**
+     * Will be set to the message processing time after all message processors have been run.
+     * TODO: To be done in Graylog 3.2
+     */
+    public static final String FIELD_GL2_PROCESSING_TIMESTAMP = "gl2_processing_timestamp";
+
+    /**
+     * Will be set to the message receive time at the input.
+     * TODO: To be done in Graylog 3.2
+     */
+    public static final String FIELD_GL2_RECEIVE_TIMESTAMP = "gl2_receive_timestamp";
+
+    /**
+     * Will be set to the hostname of the source node that sent a message. (if reverse lookup is enabled)
+     */
+    public static final String FIELD_GL2_REMOTE_HOSTNAME = "gl2_remote_hostname";
+
+    /**
+     * Will be set to the IP address of the source node that sent a message.
+     */
+    public static final String FIELD_GL2_REMOTE_IP = "gl2_remote_ip";
+
+    /**
+     * Will be set to the socket port of the source node that sent a message.
+     */
+    public static final String FIELD_GL2_REMOTE_PORT = "gl2_remote_port";
+
+    /**
+     * Can be set to the collector ID that sent a message. (e.g. used in the beats codec)
+     */
+    public static final String FIELD_GL2_SOURCE_COLLECTOR = "gl2_source_collector";
+
+    /**
+     * @deprecated This was used in the legacy collector/sidecar system and contained the database ID of the collector input.
+     */
+    @Deprecated
+    public static final String FIELD_GL2_SOURCE_COLLECTOR_INPUT = "gl2_source_collector_input";
+
+    /**
+     * Will be set to the ID of the input that received the message.
+     */
+    public static final String FIELD_GL2_SOURCE_INPUT = "gl2_source_input";
+
+    /**
+     * Will be set to the ID of the node that received the message.
+     */
+    public static final String FIELD_GL2_SOURCE_NODE = "gl2_source_node";
+
+    /**
+     * @deprecated This was used with the now removed radio system and contained the ID of a radio node.
+     * TODO: Due to be removed in Graylog 3.x
+     */
+    @Deprecated
+    public static final String FIELD_GL2_SOURCE_RADIO = "gl2_source_radio";
+
+    /**
+     * @deprecated This was used with the now removed radio system and contained the input ID of a radio node.
+     * TODO: Due to be removed in Graylog 3.x
+     */
+    @Deprecated
+    public static final String FIELD_GL2_SOURCE_RADIO_INPUT = "gl2_source_radio_input";
+
     private static final Pattern VALID_KEY_CHARS = Pattern.compile("^[\\w\\.\\-@]*$");
     private static final char KEY_REPLACEMENT_CHAR = '_';
 
     private static final ImmutableSet<String> GRAYLOG_FIELDS = ImmutableSet.of(
-        "gl2_source_node",
-        "gl2_source_input",
-        // TODO Due to be removed in Graylog 3.x
-        "gl2_source_radio",
-        "gl2_source_radio_input",
+        FIELD_GL2_ACCOUNTED_MESSAGE_SIZE,
+        FIELD_GL2_ORIGINAL_TIMESTAMP,
+        FIELD_GL2_PROCESSING_ERROR,
+        FIELD_GL2_PROCESSING_TIMESTAMP,
+        FIELD_GL2_RECEIVE_TIMESTAMP,
+        FIELD_GL2_REMOTE_HOSTNAME,
+        FIELD_GL2_REMOTE_IP,
+        FIELD_GL2_REMOTE_PORT,
+        FIELD_GL2_SOURCE_COLLECTOR,
+        FIELD_GL2_SOURCE_COLLECTOR_INPUT,
+        FIELD_GL2_SOURCE_INPUT,
+        FIELD_GL2_SOURCE_NODE,
+        FIELD_GL2_SOURCE_RADIO,
+        FIELD_GL2_SOURCE_RADIO_INPUT
+    );
 
-        "gl2_source_collector",
-        "gl2_source_collector_input",
-        "gl2_remote_ip",
-        "gl2_remote_port",
-        "gl2_remote_hostname"
+    // Graylog Illuminate Fields
+    private static final Set<String> ILLUMINATE_FIELDS = ImmutableSet.of(
+            FIELD_ILLUMINATE_EVENT_CATEGORY,
+            FIELD_ILLUMINATE_EVENT_SUBCATEGORY,
+            FIELD_ILLUMINATE_EVENT_TYPE,
+            FIELD_ILLUMINATE_EVENT_TYPE_CODE,
+            FIELD_ILLUMINATE_TAGS
     );
 
     private static final ImmutableSet<String> CORE_MESSAGE_FIELDS = ImmutableSet.of(
@@ -139,6 +272,9 @@ public class Message implements Messages {
      * was involved.
      */
     private long journalOffset = Long.MIN_VALUE;
+
+    private DateTime receiveTime;
+    private DateTime processingTime;
 
     private ArrayList<Recording> recordings;
 
@@ -229,7 +365,8 @@ public class Message implements Messages {
         return getFieldAs(DateTime.class, FIELD_TIMESTAMP).withZone(UTC);
     }
 
-    public Map<String, Object> toElasticSearchObject(@Nonnull final Meter invalidTimestampMeter) {
+    @Override
+    public Map<String, Object> toElasticSearchObject(ObjectMapper objectMapper, @Nonnull final Meter invalidTimestampMeter) {
         final Map<String, Object> obj = Maps.newHashMapWithExpectedSize(REQUIRED_FIELDS.size() + fields.size());
 
         for (Map.Entry<String, Object> entry : fields.entrySet()) {
@@ -270,6 +407,7 @@ public class Message implements Messages {
         obj.put(FIELD_MESSAGE, getMessage());
         obj.put(FIELD_SOURCE, getSource());
         obj.put(FIELD_STREAMS, getStreamIds());
+        obj.put(FIELD_GL2_ACCOUNTED_MESSAGE_SIZE, getSize());
 
         final Object timestampValue = getField(FIELD_TIMESTAMP);
         DateTime dateTime;
@@ -307,13 +445,21 @@ public class Message implements Messages {
 
     @Override
     public String toString() {
+        return toString(true);
+    }
+
+    public String toDumpString() {
+        return toString(false);
+    }
+
+    private String toString(boolean truncate) {
         final StringBuilder sb = new StringBuilder();
         sb.append("source: ").append(getField(FIELD_SOURCE)).append(" | ");
 
         final String message = getField(FIELD_MESSAGE).toString().replaceAll("\\n", "").replaceAll("\\t", "");
         sb.append("message: ");
 
-        if (message.length() > 225) {
+        if (truncate && message.length() > 225) {
             sb.append(message.substring(0, 225)).append(" (...)");
         } else {
             sb.append(message);
@@ -364,8 +510,38 @@ public class Message implements Messages {
             return;
         }
 
-        if (FIELD_TIMESTAMP.equals(trimmedKey) && value != null && value instanceof Date) {
+        final boolean isTimestamp = FIELD_TIMESTAMP.equals(trimmedKey);
+        if (isTimestamp && value instanceof Date) {
             final DateTime timestamp = new DateTime(value);
+            final Object previousValue = fields.put(FIELD_TIMESTAMP, timestamp);
+            updateSize(trimmedKey, timestamp, previousValue);
+        } else if (isTimestamp && value instanceof Temporal) {
+            final Date date;
+            if (value instanceof ZonedDateTime) {
+                date = Date.from(((ZonedDateTime) value).toInstant());
+            } else if (value instanceof OffsetDateTime) {
+                date = Date.from(((OffsetDateTime) value).toInstant());
+            } else if (value instanceof LocalDateTime) {
+                final LocalDateTime localDateTime = (LocalDateTime) value;
+                final ZoneId defaultZoneId = ZoneId.systemDefault();
+                final ZoneOffset offset = defaultZoneId.getRules().getOffset(localDateTime);
+                date = Date.from(localDateTime.toInstant(offset));
+            } else if (value instanceof LocalDate) {
+                final LocalDate localDate = (LocalDate) value;
+                final LocalDateTime localDateTime = localDate.atStartOfDay();
+                final ZoneId defaultZoneId = ZoneId.systemDefault();
+                final ZoneOffset offset = defaultZoneId.getRules().getOffset(localDateTime);
+                date = Date.from(localDateTime.toInstant(offset));
+            } else if (value instanceof Instant) {
+                date = Date.from((Instant) value);
+            } else {
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug("Unsupported temporal type {}. Using current date and time in message {}.", value.getClass(), getId());
+                }
+                date = new Date();
+            }
+
+            final DateTime timestamp = new DateTime(date);
             final Object previousValue = fields.put(FIELD_TIMESTAMP, timestamp);
             updateSize(trimmedKey, timestamp, previousValue);
         } else if (value instanceof String) {
@@ -383,7 +559,7 @@ public class Message implements Messages {
 
     private void updateSize(String fieldName, Object newValue, Object previousValue) {
         // don't count internal fields
-        if (GRAYLOG_FIELDS.contains(fieldName)) {
+        if (GRAYLOG_FIELDS.contains(fieldName) || ILLUMINATE_FIELDS.contains(fieldName)) {
             return;
         }
         long newValueSize = 0;
@@ -612,15 +788,16 @@ public class Message implements Messages {
     }
 
     // drools seems to need the "get" prefix
+    @Deprecated
     public boolean getIsSourceInetAddress() {
-        return fields.containsKey("gl2_remote_ip");
+        return fields.containsKey(FIELD_GL2_REMOTE_IP);
     }
 
     public InetAddress getInetAddress() {
-        if (!fields.containsKey("gl2_remote_ip")) {
+        if (!fields.containsKey(FIELD_GL2_REMOTE_IP)) {
             return null;
         }
-        final String ipAddr = (String) fields.get("gl2_remote_ip");
+        final String ipAddr = (String) fields.get(FIELD_GL2_REMOTE_IP);
         try {
             return InetAddresses.forString(ipAddr);
         } catch (IllegalArgumentException ignored) {
@@ -634,6 +811,30 @@ public class Message implements Messages {
 
     public long getJournalOffset() {
         return journalOffset;
+    }
+
+    @Nullable
+    public DateTime getReceiveTime() {
+        return receiveTime;
+    }
+
+    public void setReceiveTime(DateTime receiveTime) {
+        // TODO: In Graylog 3.2 we can set this as field in the message because at that point we have a mapping entry
+        if (receiveTime != null) {
+            this.receiveTime = receiveTime;
+        }
+    }
+
+    @Nullable
+    public DateTime getProcessingTime() {
+        return processingTime;
+    }
+
+    public void setProcessingTime(DateTime processingTime) {
+        // TODO: In Graylog 3.2 we can set this as field in the message because at that point we have a mapping entry
+        if (processingTime != null) {
+            this.processingTime = processingTime;
+        }
     }
 
     // helper methods to optionally record timing information per message, useful for debugging or benchmarking

@@ -1,26 +1,53 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
+// eslint-disable-next-line no-restricted-imports
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Link } from 'react-router';
-import { ProgressBar, Row, Col, Alert } from 'react-bootstrap';
+
+import { Link } from 'components/graylog/router';
+
 import numeral from 'numeral';
 import moment from 'moment';
 import {} from 'moment-duration-format';
+import styled from 'styled-components';
 
+import { Row, Col, Alert } from 'components/graylog';
+import ProgressBar, { Bar } from 'components/graylog/ProgressBar';
 import MetricsExtractor from 'logic/metrics/MetricsExtractor';
-
 import ActionsProvider from 'injection/ActionsProvider';
-const MetricsActions = ActionsProvider.getActions('Metrics');
-
 import StoreProvider from 'injection/StoreProvider';
+import { Spinner, Timestamp, Icon } from 'components/common';
+import NumberUtils from 'util/NumberUtils';
+import Routes from 'routing/Routes';
+
+const MetricsActions = ActionsProvider.getActions('Metrics');
 const MetricsStore = StoreProvider.getStore('Metrics');
 const JournalStore = StoreProvider.getStore('Journal');
 
-import { Spinner, Timestamp } from 'components/common';
+const JournalUsageProgressBar = styled(ProgressBar)`
+  margin-bottom: 5px;
+  margin-top: 10px;
 
-import NumberUtils from 'util/NumberUtils';
-import Routes from 'routing/Routes';
+  ${Bar} {
+    min-width: 3em;
+  }
+`;
 
 const JournalDetails = createReactClass({
   displayName: 'JournalDetails',
@@ -38,20 +65,27 @@ const JournalDetails = createReactClass({
   },
 
   componentDidMount() {
-    JournalStore.get(this.props.nodeId).then((journalInformation) => {
+    const { nodeId } = this.props;
+
+    JournalStore.get(nodeId).then((journalInformation) => {
       this.setState({ journalInformation: journalInformation }, this._listenToMetrics);
     });
   },
 
   componentWillUnmount() {
+    const { nodeId } = this.props;
+
     if (this.metricNames) {
-      Object.keys(this.metricNames).forEach(metricShortName => MetricsActions.remove(this.props.nodeId, this.metricNames[metricShortName]));
+      Object.keys(this.metricNames).forEach((metricShortName) => MetricsActions.remove(nodeId, this.metricNames[metricShortName]));
     }
   },
 
   _listenToMetrics() {
+    const { nodeId } = this.props;
+    const { journalInformation } = this.state;
+
     // only listen for updates if the journal is actually turned on
-    if (this.state.journalInformation.enabled) {
+    if (journalInformation.enabled) {
       this.metricNames = {
         append: 'org.graylog2.journal.append.1-sec-rate',
         read: 'org.graylog2.journal.read.1-sec-rate',
@@ -60,12 +94,15 @@ const JournalDetails = createReactClass({
         utilizationRatio: 'org.graylog2.journal.utilization-ratio',
         oldestSegment: 'org.graylog2.journal.oldest-segment',
       };
-      Object.keys(this.metricNames).forEach(metricShortName => MetricsActions.add(this.props.nodeId, this.metricNames[metricShortName]));
+
+      Object.keys(this.metricNames).forEach((metricShortName) => MetricsActions.add(nodeId, this.metricNames[metricShortName]));
     }
   },
 
   _isLoading() {
-    return !(this.state.metrics && this.state.journalInformation);
+    const { journalInformation, metrics } = this.state;
+
+    return !(metrics && journalInformation);
   },
 
   render() {
@@ -73,14 +110,15 @@ const JournalDetails = createReactClass({
       return <Spinner text="Loading journal metrics..." />;
     }
 
-    const nodeId = this.props.nodeId;
-    const nodeMetrics = this.state.metrics[nodeId];
-    const journalInformation = this.state.journalInformation;
+    const { nodeId } = this.props;
+    const { metrics: metricsState } = this.state;
+    const nodeMetrics = metricsState[nodeId];
+    const { journalInformation } = this.state;
 
     if (!journalInformation.enabled) {
       return (
         <Alert bsStyle="warning">
-          <i className="fa fa-exclamation-triangle" />&nbsp; The disk journal is disabled on this node.
+          <Icon name="exclamation-triangle" />&nbsp; The disk journal is disabled on this node.
         </Alert>
       );
     }
@@ -90,13 +128,14 @@ const JournalDetails = createReactClass({
     if (Object.keys(metrics).length === 0) {
       return (
         <Alert bsStyle="warning">
-          <i className="fa fa-exclamation-triangle" />&nbsp; Journal metrics unavailable.
+          <Icon name="exclamation-triangle" />&nbsp; Journal metrics unavailable.
         </Alert>
       );
     }
 
     const oldestSegment = moment(metrics.oldestSegment);
     let overcommittedWarning;
+
     if (metrics.utilizationRatio >= 1) {
       overcommittedWarning = (
         <span>
@@ -126,11 +165,13 @@ const JournalDetails = createReactClass({
             </dd>
           </dl>
         </Col>
-        <Col md={6} className="journal-details-usage">
+        <Col md={6}>
           <h3>Utilization</h3>
 
-          <ProgressBar now={metrics.utilizationRatio * 100}
-                       label={NumberUtils.formatPercentage(metrics.utilizationRatio)} />
+          <JournalUsageProgressBar bars={[{
+            value: metrics.utilizationRatio * 100,
+            label: NumberUtils.formatPercentage(metrics.utilizationRatio),
+          }]} />
 
           {overcommittedWarning}
 

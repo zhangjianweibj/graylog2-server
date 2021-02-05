@@ -1,15 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Button } from 'react-bootstrap';
 
-import { EntityList, Spinner } from 'components/common';
-import { AlertConditionForm, AlertConditionSummary } from 'components/alertconditions';
+import { EntityList } from 'components/common';
+import { AlertCondition } from 'components/alertconditions';
 import PermissionsMixin from 'util/PermissionsMixin';
-
 import CombinedProvider from 'injection/CombinedProvider';
-const { AlertConditionsActions, AlertConditionsStore } = CombinedProvider.get('AlertConditions');
+
 const { CurrentUserStore } = CombinedProvider.get('CurrentUser');
 
 const EditAlertConditionForm = createReactClass({
@@ -17,62 +31,37 @@ const EditAlertConditionForm = createReactClass({
 
   propTypes: {
     alertCondition: PropTypes.object.isRequired,
+    conditionType: PropTypes.object.isRequired,
     stream: PropTypes.object.isRequired,
+    onUpdate: PropTypes.func,
+    onDelete: PropTypes.func,
   },
 
-  mixins: [Reflux.connect(AlertConditionsStore), Reflux.connect(CurrentUserStore), PermissionsMixin],
+  mixins: [Reflux.connect(CurrentUserStore), PermissionsMixin],
 
-  _onEdit() {
-    this.refs.updateForm.open();
-  },
-
-  _onUpdate(request) {
-    AlertConditionsActions.update(this.props.stream.id, this.props.alertCondition.id, request).then(() => {
-      AlertConditionsActions.get(this.props.stream.id, this.props.alertCondition.id);
-    });
-  },
-
-  _formatCondition() {
-    const type = this.props.alertCondition.type;
-    const stream = this.props.stream;
-    const condition = this.props.alertCondition;
-    const typeDefinition = this.state.types[type];
-
-    const permissions = this.state.currentUser.permissions;
-    let actions = [];
-    if (this.isPermitted(permissions, `streams:edit:${stream.id}`)) {
-      actions = [
-        <Button key="edit-button" bsStyle="info" onClick={this._onEdit}>Edit</Button>,
-      ];
-    }
-
-    return [
-      <AlertConditionSummary key={`alert-condition-${condition.id}`} alertCondition={condition}
-                             typeDefinition={typeDefinition} stream={stream}
-                             actions={actions} />,
-    ];
-  },
-
-  _isLoading() {
-    return !this.state.types;
+  getDefaultProps() {
+    return {
+      onUpdate: () => {},
+      onDelete: () => {},
+    };
   },
 
   render() {
-    if (this._isLoading()) {
-      return <Spinner />;
-    }
-
-    const condition = this.props.alertCondition;
+    const { alertCondition, conditionType, stream } = this.props;
 
     return (
       <div>
         <h2>Condition details</h2>
         <p>Define the condition to evaluate when triggering a new alert.</p>
-        <AlertConditionForm ref="updateForm"
-                            type={condition.type}
-                            alertCondition={condition}
-                            onSubmit={this._onUpdate} />
-        <EntityList items={this._formatCondition()} />
+        <EntityList items={[
+          <AlertCondition key={alertCondition.id}
+                          stream={stream}
+                          alertCondition={alertCondition}
+                          conditionType={conditionType}
+                          onUpdate={this.props.onUpdate}
+                          onDelete={this.props.onDelete}
+                          isDetailsView />,
+        ]} />
       </div>
     );
   },

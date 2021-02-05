@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.bindings;
 
@@ -21,8 +21,6 @@ import org.graylog2.alerts.AlertService;
 import org.graylog2.alerts.AlertServiceImpl;
 import org.graylog2.cluster.NodeService;
 import org.graylog2.cluster.NodeServiceImpl;
-import org.graylog2.dashboards.DashboardService;
-import org.graylog2.dashboards.DashboardServiceImpl;
 import org.graylog2.indexer.IndexFailureService;
 import org.graylog2.indexer.IndexFailureServiceImpl;
 import org.graylog2.indexer.ranges.IndexRangeService;
@@ -30,16 +28,14 @@ import org.graylog2.indexer.ranges.LegacyMongoIndexRangeService;
 import org.graylog2.indexer.ranges.MongoIndexRangeService;
 import org.graylog2.inputs.InputService;
 import org.graylog2.inputs.InputServiceImpl;
+import org.graylog2.inputs.persistence.InputStatusService;
+import org.graylog2.inputs.persistence.MongoInputStatusService;
 import org.graylog2.notifications.NotificationService;
 import org.graylog2.notifications.NotificationServiceImpl;
-import org.graylog2.savedsearches.SavedSearchService;
-import org.graylog2.savedsearches.SavedSearchServiceImpl;
 import org.graylog2.security.AccessTokenService;
 import org.graylog2.security.AccessTokenServiceImpl;
 import org.graylog2.security.MongoDBSessionService;
 import org.graylog2.security.MongoDBSessionServiceImpl;
-import org.graylog2.security.ldap.LdapSettingsService;
-import org.graylog2.security.ldap.LdapSettingsServiceImpl;
 import org.graylog2.shared.users.UserService;
 import org.graylog2.streams.StreamRuleService;
 import org.graylog2.streams.StreamRuleServiceImpl;
@@ -53,7 +49,6 @@ public class PersistenceServicesBindings extends AbstractModule {
     @Override
     protected void configure() {
         bind(SystemMessageService.class).to(SystemMessageServiceImpl.class);
-        bind(DashboardService.class).to(DashboardServiceImpl.class);
         bind(AlertService.class).to(AlertServiceImpl.class);
         bind(NotificationService.class).to(NotificationServiceImpl.class);
         bind(IndexFailureService.class).to(IndexFailureServiceImpl.class);
@@ -65,8 +60,7 @@ public class PersistenceServicesBindings extends AbstractModule {
         bind(UserService.class).to(UserServiceImpl.class);
         bind(StreamService.class).to(StreamServiceImpl.class);
         bind(AccessTokenService.class).to(AccessTokenServiceImpl.class);
-        bind(SavedSearchService.class).to(SavedSearchServiceImpl.class);
-        bind(LdapSettingsService.class).to(LdapSettingsServiceImpl.class);
         bind(MongoDBSessionService.class).to(MongoDBSessionServiceImpl.class);
+        bind(InputStatusService.class).to(MongoInputStatusService.class).asEagerSingleton();
     }
 }

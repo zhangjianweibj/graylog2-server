@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.periodical;
 
@@ -20,6 +20,7 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.RatioGauge;
 import com.github.joschi.jadconfig.util.Size;
+import com.google.common.eventbus.EventBus;
 import org.graylog2.notifications.Notification;
 import org.graylog2.notifications.NotificationService;
 import org.graylog2.plugin.GlobalMetricNames;
@@ -54,6 +55,7 @@ public class ThrottleStateUpdaterThread extends Periodical {
     private static final Logger log = LoggerFactory.getLogger(ThrottleStateUpdaterThread.class);
     private final KafkaJournal journal;
     private final ProcessBuffer processBuffer;
+    private final EventBus eventBus;
     private final Size retentionSize;
     private final NotificationService notificationService;
     private final ServerStatus serverStatus;
@@ -67,11 +69,13 @@ public class ThrottleStateUpdaterThread extends Periodical {
     @Inject
     public ThrottleStateUpdaterThread(final Journal journal,
                                       ProcessBuffer processBuffer,
+                                      EventBus eventBus,
                                       NotificationService notificationService,
                                       ServerStatus serverStatus,
                                       MetricRegistry metricRegistry,
                                       @Named("message_journal_max_size") Size retentionSize) {
         this.processBuffer = processBuffer;
+        this.eventBus = eventBus;
         this.retentionSize = retentionSize;
         this.notificationService = notificationService;
         this.serverStatus = serverStatus;
@@ -228,6 +232,9 @@ public class ThrottleStateUpdaterThread extends Periodical {
         // the journal needs this to provide information to rest clients
         journal.setThrottleState(throttleState);
         
+        // publish to interested parties
+        eventBus.post(throttleState);
+
         // Abusing the current thread to send notifications from KafkaJournal in the graylog2-shared module
         final double journalUtilizationPercentage = throttleState.journalSizeLimit > 0 ? (throttleState.journalSize * 100) / throttleState.journalSizeLimit : 0.0;
 

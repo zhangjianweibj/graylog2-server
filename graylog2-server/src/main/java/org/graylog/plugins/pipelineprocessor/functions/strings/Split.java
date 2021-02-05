@@ -1,35 +1,41 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.functions.strings;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.primitives.Ints;
+import com.google.common.reflect.TypeToken;
 import org.graylog.plugins.pipelineprocessor.EvaluationContext;
 import org.graylog.plugins.pipelineprocessor.ast.functions.AbstractFunction;
 import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionArgs;
 import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionDescriptor;
 import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class Split extends AbstractFunction<String[]> {
+public class Split extends AbstractFunction<List<String>> {
+    @SuppressWarnings("unchecked")
+    private static final Class<List<String>> RETURN_TYPE = (Class<List<String>>) new TypeToken<List<String>>() {
+    }.getRawType();
+
     public static final String NAME = "split";
 
     private final ParameterDescriptor<String, Pattern> pattern;
@@ -52,21 +58,21 @@ public class Split extends AbstractFunction<String[]> {
     }
 
     @Override
-    public String[] evaluate(FunctionArgs args, EvaluationContext context) {
+    public List<String> evaluate(FunctionArgs args, EvaluationContext context) {
         final Pattern regex = requireNonNull(pattern.required(args, context), "Argument 'pattern' cannot be 'null'");
         final String value = requireNonNull(this.value.required(args, context), "Argument 'value' cannot be 'null'");
 
         final int limit = this.limit.optional(args, context).orElse(0);
         checkArgument(limit >= 0, "Argument 'limit' cannot be negative");
-        return regex.split(value, limit);
+        return ImmutableList.copyOf(regex.split(value, limit));
     }
 
     @Override
-    public FunctionDescriptor<String[]> descriptor() {
-        return FunctionDescriptor.<String[]>builder()
+    public FunctionDescriptor<List<String>> descriptor() {
+        return FunctionDescriptor.<List<String>>builder()
                 .name(NAME)
                 .pure(true)
-                .returnType(String[].class)
+                .returnType(RETURN_TYPE)
                 .params(ImmutableList.of(pattern, value, limit))
                 .description("Split a string around matches of this pattern (Java syntax)")
                 .build();

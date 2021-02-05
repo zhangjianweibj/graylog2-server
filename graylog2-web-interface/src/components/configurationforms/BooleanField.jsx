@@ -1,8 +1,25 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import FieldHelpers from './FieldHelpers';
 
 import FormsUtils from 'util/FormsUtils';
+
+import FieldHelpers from './FieldHelpers';
 
 class BooleanField extends React.Component {
   static propTypes = {
@@ -15,9 +32,10 @@ class BooleanField extends React.Component {
   };
 
   render() {
-    const field = this.props.field;
-    const typeName = this.props.typeName;
-    const title = this.props.title;
+    const { field } = this.props;
+    const { typeName } = this.props;
+    const { title } = this.props;
+
     return (
       <div className="form-group">
         <div className="checkbox">
@@ -40,6 +58,7 @@ class BooleanField extends React.Component {
 
   handleChange = (event) => {
     const newValue = FormsUtils.getValueFromInput(event.target);
+
     this.props.onChange(this.props.title, newValue);
   };
 }

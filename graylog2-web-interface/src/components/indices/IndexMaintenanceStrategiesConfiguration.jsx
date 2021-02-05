@@ -1,7 +1,23 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Input } from 'components/bootstrap';
 
+import { Input } from 'components/bootstrap';
 import { Select } from 'components/common';
 
 class IndexMaintenanceStrategiesConfiguration extends React.Component {
@@ -23,12 +39,14 @@ class IndexMaintenanceStrategiesConfiguration extends React.Component {
   };
 
   _getDefaultStrategyConfig = (selectedStrategy) => {
-    const result = this.props.strategies.filter(strategy => strategy.type === selectedStrategy)[0];
+    const result = this.props.strategies.filter((strategy) => strategy.type === selectedStrategy)[0];
+
     return result ? result.default_config : undefined;
   };
 
   _getStrategyJsonSchema = (selectedStrategy) => {
-    const result = this.props.strategies.filter(strategy => strategy.type === selectedStrategy)[0];
+    const result = this.props.strategies.filter((strategy) => strategy.type === selectedStrategy)[0];
+
     return result ? result.json_schema : undefined;
   };
 
@@ -37,13 +55,15 @@ class IndexMaintenanceStrategiesConfiguration extends React.Component {
       // If the newly selected strategy is the current active strategy, we use the active configuration.
       return this.state.activeConfig;
     }
-      // If the newly selected strategy is not the current active strategy, we use the selected strategy's default config.
+
+    // If the newly selected strategy is not the current active strategy, we use the selected strategy's default config.
     return this._getDefaultStrategyConfig(selectedStrategy);
   };
 
   _onSelect = (newStrategy) => {
     if (!newStrategy || newStrategy.length < 1) {
       this.setState({ newStrategy: undefined });
+
       return;
     }
 
@@ -55,7 +75,7 @@ class IndexMaintenanceStrategiesConfiguration extends React.Component {
 
   _addConfigType = (strategy, data) => {
     // The config object needs to have the "type" field set to the "default_config.type" to make the REST call work.
-    const result = this.props.strategies.filter(s => s.type === strategy)[0];
+    const result = this.props.strategies.filter((s) => s.type === strategy)[0];
     const copy = data;
 
     if (result) {
@@ -83,7 +103,7 @@ class IndexMaintenanceStrategiesConfiguration extends React.Component {
       return null;
     }
 
-    const strategy = this.props.pluginExports.filter(exportedStrategy => exportedStrategy.type === selectedStrategy)[0];
+    const strategy = this.props.pluginExports.filter((exportedStrategy) => exportedStrategy.type === selectedStrategy)[0];
 
     if (!strategy) {
       return null;
@@ -111,7 +131,7 @@ class IndexMaintenanceStrategiesConfiguration extends React.Component {
         <Input id="strategy-select" label={this.props.selectPlaceholder}>
           <Select placeholder={this.props.selectPlaceholder}
                   options={this._availableSelectOptions()}
-                  matchProp="value"
+                  matchProp="label"
                   value={this._activeSelection()}
                   onChange={this._onSelect} />
         </Input>

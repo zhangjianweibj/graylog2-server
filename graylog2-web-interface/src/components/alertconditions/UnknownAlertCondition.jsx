@@ -1,7 +1,23 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert, Col, DropdownButton, MenuItem } from 'react-bootstrap';
 
+import { Alert, Col, DropdownButton, MenuItem } from 'components/graylog';
 import { EntityListItem } from 'components/common';
 
 class UnknownAlertCondition extends React.Component {
@@ -13,7 +29,7 @@ class UnknownAlertCondition extends React.Component {
 
   render() {
     const condition = this.props.alertCondition;
-    const stream = this.props.stream;
+    const { stream } = this.props;
 
     const actions = [
       <DropdownButton key="actions-button" title="Actions" pullRight id={`more-actions-dropdown-${condition.id}`}>
@@ -28,6 +44,7 @@ class UnknownAlertCondition extends React.Component {
         </Alert>
       </Col>
     );
+
     return (
       <EntityListItem key={`entry-list-${condition.id}`}
                       title="Unknown condition"

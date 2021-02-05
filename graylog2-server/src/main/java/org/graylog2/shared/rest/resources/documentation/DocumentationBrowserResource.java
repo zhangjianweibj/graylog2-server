@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.rest.resources.documentation;
 
@@ -65,6 +65,7 @@ public class DocumentationBrowserResource extends RestResource {
                 .build();
     }
 
+    // Serve Swagger for a specific node, using HttpPublishUri
     @GET
     @Produces(MediaType.TEXT_HTML)
     @Path("index.html")
@@ -72,18 +73,40 @@ public class DocumentationBrowserResource extends RestResource {
         final URL templateUrl = this.getClass().getResource("/swagger/index.html.template");
         final String template = Resources.toString(templateUrl, StandardCharsets.UTF_8);
         final Map<String, Object> model = ImmutableMap.of(
-                "baseUri", RestTools.buildExternalUri(httpHeaders.getRequestHeaders(), httpConfiguration.getHttpExternalUri()).resolve(HttpConfiguration.PATH_API).toString());
+                "baseUri", httpConfiguration.getHttpPublishUri().resolve(HttpConfiguration.PATH_API).toString(),
+                "globalModePath", "",
+                "globalUriMarker", "",
+                "showWarning", "");
+        return templateEngine.transform(template, model);
+    }
+
+    // Serve Swagger in cluster global mode, using HttpExternalUri
+    @GET
+    @Produces(MediaType.TEXT_HTML)
+    @Path("/global/index.html")
+    public String allIndex(@Context HttpHeaders httpHeaders) throws IOException {
+        final URL templateUrl = this.getClass().getResource("/swagger/index.html.template");
+        final String template = Resources.toString(templateUrl, StandardCharsets.UTF_8);
+        final Map<String, Object> model = ImmutableMap.of(
+                "baseUri", RestTools.buildExternalUri(httpHeaders.getRequestHeaders(), httpConfiguration.getHttpExternalUri()).resolve(HttpConfiguration.PATH_API).toString(),
+                "globalModePath", "global/index.html",
+                "globalUriMarker", "/global",
+                "showWarning", "true");
         return templateEngine.transform(template, model);
     }
 
     @GET
     @Path("/{route: .*}")
     public Response asset(@PathParam("route") String route) throws IOException {
-        // Directory traversal should not be possible but just to make sure..
+        // Remove path globalModePath before we serve swagger resources
+        if (route.startsWith("global/")) {
+            route = route.replaceFirst("global/", "");
+        }
+
+        // Trying to prevent directory traversal
         if (route.contains("..")) {
             throw new BadRequestException("Not allowed to access parent directory");
         }
-
         final URL resource = classLoader.getResource("swagger/" + route);
         if (null != resource) {
             try {

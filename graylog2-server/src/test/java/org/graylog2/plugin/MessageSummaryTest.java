@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin;
 
@@ -37,7 +37,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class MessageSummaryTest {
-    public static final List<String> STREAM_IDS = ImmutableList.of("stream1", "stream2");
+    public static final ImmutableList<String> STREAM_IDS = ImmutableList.of("stream1", "stream2");
     public static final String INDEX_NAME = "graylog2_3";
 
     private Message message;
@@ -52,27 +52,27 @@ public class MessageSummaryTest {
 
     @Test
     public void testGetIndex() throws Exception {
-        assertEquals(messageSummary.getIndex(), INDEX_NAME);
+        assertEquals(INDEX_NAME, messageSummary.getIndex());
     }
 
     @Test
     public void testGetId() throws Exception {
-        assertEquals(messageSummary.getId(), message.getId());
+        assertEquals(message.getId(), messageSummary.getId());
     }
 
     @Test
     public void testGetSource() throws Exception {
-        assertEquals(messageSummary.getSource(), message.getSource());
+        assertEquals(message.getSource(), messageSummary.getSource());
     }
 
     @Test
     public void testGetMessage() throws Exception {
-        assertEquals(messageSummary.getMessage(), message.getMessage());
+        assertEquals(message.getMessage(), messageSummary.getMessage());
     }
 
     @Test
     public void testGetTimestamp() throws Exception {
-        assertEquals(messageSummary.getTimestamp(), message.getTimestamp());
+        assertEquals(message.getTimestamp(), messageSummary.getTimestamp());
     }
 
     @Test
@@ -82,11 +82,11 @@ public class MessageSummaryTest {
 
     @Test
     public void testGetFields() throws Exception {
-        assertEquals(messageSummary.getFields(), new HashMap<String, Object>());
+        assertEquals(new HashMap<String, Object>(), messageSummary.getFields());
 
         message.addField("foo", "bar");
 
-        assertEquals(messageSummary.getFields(), ImmutableMap.of("foo", "bar"));
+        assertEquals(ImmutableMap.of("foo", "bar"), messageSummary.getFields());
     }
 
     @Test
@@ -96,7 +96,7 @@ public class MessageSummaryTest {
 
         final Map<String, Object> map = mapper.readValue(mapper.writeValueAsBytes(messageSummary), valueType);
 
-        assertEquals(map.keySet(), Sets.newHashSet("id", "timestamp", "message", "index", "source", "streamIds", "fields"));
+        assertEquals(Sets.newHashSet("id", "timestamp", "message", "index", "source", "streamIds", "fields"), map.keySet());
     }
 
     @Test
@@ -114,6 +114,6 @@ public class MessageSummaryTest {
 
         message.addField("foo", "bar");
 
-        assertEquals(messageSummary.getField("foo"), "bar");
+        assertEquals("bar", messageSummary.getField("foo"));
     }
 }

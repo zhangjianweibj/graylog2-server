@@ -1,6 +1,23 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 /* eslint-disable react/no-unescaped-entities */
 import React from 'react';
-import { Alert } from 'react-bootstrap';
+
+import { Alert } from 'components/graylog';
 
 class MaxmindAdapterDocumentation extends React.Component {
   render() {
@@ -34,29 +51,40 @@ class MaxmindAdapterDocumentation extends React.Component {
     }
 }`;
 
-    return (<div>
-      <p>The GeoIP data adapter supports reading MaxMind's GeoIP2 databases.</p>
+    const asnFields = `{
+    "as_number": 15169,
+    "as_organization": "Google LLC"
+}`;
 
-      <Alert style={{ marginBottom: 10 }} bsStyle="info">
-        <h4 style={{ marginBottom: 10 }}>Limitations</h4>
-        <p>Currently the city and country databases are supported.</p>
-        <p>For support of additional database types, please visit our support channels.</p>
-      </Alert>
+    return (
+      <div>
+        <p>The GeoIP data adapter supports reading MaxMind's GeoIP2 databases.</p>
 
-      <hr />
+        <Alert style={{ marginBottom: 10 }} bsStyle="info">
+          <h4 style={{ marginBottom: 10 }}>Limitations</h4>
+          <p>Currently the ASN, city and country databases are supported.</p>
+          <p>For support of additional database types, please visit our support channels.</p>
+        </Alert>
 
-      <h3 style={{ marginBottom: 10 }}>Country database fields</h3>
+        <hr />
 
-      <pre>{countryFields}</pre>
+        <h3 style={{ marginBottom: 10 }}>ASN database fields</h3>
 
-      <h3 style={{ marginBottom: 10 }}>City database fields</h3>
+        <pre>{asnFields}</pre>
 
-      <p>In addition to the fields provided by the country database, the city database also includes the following fields:</p>
+        <h3 style={{ marginBottom: 10 }}>Country database fields</h3>
 
-      <pre>{cityFields}</pre>
+        <pre>{countryFields}</pre>
 
-      <p>For a complete documentation of the fields, please see MaxMind's <a href="http://maxmind.github.io/GeoIP2-java/" target="_blank" rel="noopener noreferrer">developer documentation</a></p>
-    </div>);
+        <h3 style={{ marginBottom: 10 }}>City database fields</h3>
+
+        <p>In addition to the fields provided by the country database, the city database also includes the following fields:</p>
+
+        <pre>{cityFields}</pre>
+
+        <p>For a complete documentation of the fields, please see MaxMind's <a href="http://maxmind.github.io/GeoIP2-java/" target="_blank" rel="noopener noreferrer">developer documentation</a></p>
+      </div>
+    );
   }
 }
 

@@ -1,14 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import _ from 'lodash';
-import { Button, Col, Row } from 'react-bootstrap';
+
+import { Col, Row, Button } from 'components/graylog';
 import { Input } from 'components/bootstrap';
 import ObjectUtils from 'util/ObjectUtils';
 import FormsUtils from 'util/FormsUtils';
 import { JSONValueInput } from 'components/common';
-
 import { CachesContainer, CachePicker, DataAdaptersContainer, DataAdapterPicker } from 'components/lookup-tables';
-
 import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
@@ -47,11 +62,12 @@ class LookupTableForm extends React.Component {
     }
   }
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     if (_.isEqual(this.props.table, nextProps.table)) {
       // props haven't change, don't update our state from them
       return;
     }
+
     this.setState(this._initialState(nextProps.table));
   }
 
@@ -72,8 +88,10 @@ class LookupTableForm extends React.Component {
     if (!table.cache_id || !table.data_adapter_id) {
       return;
     }
+
     // first cancel outstanding validation timer, we have new data
     this._clearTimer();
+
     if (this.props.validate) {
       this.validationCheckTimer = setTimeout(() => this.props.validate(table), 500);
     }
@@ -102,6 +120,7 @@ class LookupTableForm extends React.Component {
 
   _onChange = (event) => {
     const table = ObjectUtils.clone(this.state.table);
+
     table[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this._validate(table);
     this.setState({ table: table });
@@ -109,6 +128,7 @@ class LookupTableForm extends React.Component {
 
   _onConfigChange = (event) => {
     const table = ObjectUtils.clone(this.state.table);
+
     table.config[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this._validate(table);
     this.setState({ table: table });
@@ -120,6 +140,7 @@ class LookupTableForm extends React.Component {
     }
 
     let promise;
+
     if (this.props.create) {
       promise = LookupTablesActions.create(this.state.table);
     } else {
@@ -133,6 +154,7 @@ class LookupTableForm extends React.Component {
 
   _onAdapterSelect = (id) => {
     const table = ObjectUtils.clone(this.state.table);
+
     table.data_adapter_id = id;
     this._validate(table);
     this.setState({ table: table });
@@ -140,6 +162,7 @@ class LookupTableForm extends React.Component {
 
   _onCacheSelect = (id) => {
     const table = ObjectUtils.clone(this.state.table);
+
     table.cache_id = id;
     this._validate(table);
     this.setState({ table: table });
@@ -157,6 +180,7 @@ class LookupTableForm extends React.Component {
 
   _onCheckEnableSingleDefault = (e) => {
     const value = FormsUtils.getValueFromInput(e.target);
+
     this.setState({ enable_default_single: value });
 
     if (value === false) {
@@ -166,6 +190,7 @@ class LookupTableForm extends React.Component {
 
   _onCheckEnableMultiDefault = (e) => {
     const value = FormsUtils.getValueFromInput(e.target);
+
     this.setState({ enable_default_multi: value });
 
     if (value === false) {
@@ -185,24 +210,28 @@ class LookupTableForm extends React.Component {
     if (this.props.validationErrors[fieldName]) {
       return 'error';
     }
+
     return null;
   };
 
   _validationMessage = (fieldName, defaultText) => {
     if (this.props.validationErrors[fieldName]) {
-      return (<div>
-        <span>{defaultText}</span>
+      return (
+        <div>
+          <span>{defaultText}</span>
         &nbsp;
-        <span><b>{this.props.validationErrors[fieldName][0]}</b></span>
-      </div>);
+          <span><b>{this.props.validationErrors[fieldName][0]}</b></span>
+        </div>
+      );
     }
+
     return <span>{defaultText}</span>;
   };
 
   state = this._initialState(this.props.table);
 
   render() {
-    const table = this.state.table;
+    const { table } = this.state;
 
     return (
       <form className="form form-horizontal" onSubmit={this._save}>
@@ -246,10 +275,10 @@ class LookupTableForm extends React.Component {
                  checked={this.state.enable_default_single}
                  onChange={this._onCheckEnableSingleDefault}
                  help="Enable if the lookup table should provide a default for the single value."
-                 wrapperClassName="col-md-offset-3 col-md-9"
-                 />
+                 wrapperClassName="col-md-offset-3 col-md-9" />
 
-          {this.state.enable_default_single &&
+          {this.state.enable_default_single
+          && (
           <JSONValueInput label="Default single value"
                           help={this._validationMessage('default_single_value', 'The single value that is being used as lookup result if the data adapter or cache does not find a value.')}
                           validationState={this._validationState('default_single_value')}
@@ -260,7 +289,7 @@ class LookupTableForm extends React.Component {
                           allowedTypes={['STRING', 'NUMBER', 'BOOLEAN', 'NULL']}
                           labelClassName="col-sm-3"
                           wrapperClassName="col-sm-9" />
-          }
+          )}
 
           <Input type="checkbox"
                  label="Enable multi default value"
@@ -269,7 +298,8 @@ class LookupTableForm extends React.Component {
                  help="Enable if the lookup table should provide a default for the multi value."
                  wrapperClassName="col-md-offset-3 col-md-9" />
 
-          {this.state.enable_default_multi &&
+          {this.state.enable_default_multi
+          && (
           <JSONValueInput label="Default multi value"
                           help={this._validationMessage('default_multi_value', 'The multi value that is being used as lookup result if the data adapter or cache does not find a value.')}
                           validationState={this._validationState('default_multi_value')}
@@ -279,7 +309,7 @@ class LookupTableForm extends React.Component {
                           allowedTypes={['OBJECT', 'NULL']}
                           labelClassName="col-sm-3"
                           wrapperClassName="col-sm-9" />
-          }
+          )}
         </fieldset>
 
         <DataAdaptersContainer>

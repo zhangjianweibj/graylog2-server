@@ -1,14 +1,32 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Link } from 'react-router';
 
+import { Link } from 'components/graylog/router';
 import StoreProvider from 'injection/StoreProvider';
-const NodesStore = StoreProvider.getStore('Nodes');
-
 import Routes from 'routing/Routes';
-import { Spinner } from 'components/common';
+
+import Icon from './Icon';
+import Spinner from './Spinner';
+
+const NodesStore = StoreProvider.getStore('Nodes');
 
 /**
  * Component that creates a link to a Graylog node. The information in the link includes:
@@ -32,19 +50,23 @@ const LinkToNode = createReactClass({
     if (!this.state.nodes) {
       return <Spinner />;
     }
+
     const node = this.state.nodes[this.props.nodeId];
 
     if (node) {
-      const iconClass = node.is_master ? 'fa fa-star master-node' : 'fa fa-code-fork';
+      const iconName = node.is_master ? 'star' : 'code-branch';
+      const iconClass = node.is_master ? 'master-node' : '';
       const iconTitle = node.is_master ? 'This is the master node in the cluster' : '';
+
       return (
         <Link to={Routes.SYSTEM.NODES.SHOW(this.props.nodeId)}>
-          <i className={iconClass} title={iconTitle} />
+          <Icon name={iconName} className={iconClass} title={iconTitle} />
           {' '}
           {node.short_node_id} / {node.hostname}
         </Link>
       );
     }
+
     return <i>Unknown Node</i>;
   },
 });

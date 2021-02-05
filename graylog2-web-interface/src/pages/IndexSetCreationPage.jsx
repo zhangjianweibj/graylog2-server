@@ -1,22 +1,36 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Button, Row, Col } from 'react-bootstrap';
 
+import { LinkContainer } from 'components/graylog/router';
+import { Row, Col, Button } from 'components/graylog';
 import { DocumentTitle, PageHeader, Spinner } from 'components/common';
 import { IndexSetConfigurationForm } from 'components/indices';
 import { DocumentationLink } from 'components/support';
 import DateTime from 'logic/datetimes/DateTime';
-
+import history from 'util/History';
+import DocsHelper from 'util/DocsHelper';
+import Routes from 'routing/Routes';
 import CombinedProvider from 'injection/CombinedProvider';
 
 const { IndexSetsStore, IndexSetsActions } = CombinedProvider.get('IndexSets');
 const { IndicesConfigurationStore, IndicesConfigurationActions } = CombinedProvider.get('IndicesConfiguration');
-
-import history from 'util/History';
-import DocsHelper from 'util/DocsHelper';
-import Routes from 'routing/Routes';
 
 const IndexSetCreationPage = createReactClass({
   displayName: 'IndexSetCreationPage',
@@ -44,6 +58,7 @@ const IndexSetCreationPage = createReactClass({
         index_analyzer: 'standard',
         index_optimization_max_num_segments: 1,
         index_optimization_disabled: false,
+        field_type_refresh_interval: 5 * 1000, // 5 seconds
       },
     };
   },
@@ -55,7 +70,9 @@ const IndexSetCreationPage = createReactClass({
 
   _saveConfiguration(indexSet) {
     const copy = indexSet;
+
     copy.creation_date = DateTime.now().toISOString();
+
     IndexSetsActions.create(copy).then(() => {
       history.push(Routes.SYSTEM.INDICES.LIST);
     });
@@ -70,7 +87,7 @@ const IndexSetCreationPage = createReactClass({
       return <Spinner />;
     }
 
-    const indexSet = this.state.indexSet;
+    const { indexSet } = this.state;
 
     return (
       <DocumentTitle title="Create Index Set">

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.initializers;
 
@@ -35,6 +35,8 @@ import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.server.model.Resource;
+import org.graylog.security.UserContextBinder;
+import org.graylog2.Configuration;
 import org.graylog2.audit.PluginAuditEventTypes;
 import org.graylog2.audit.jersey.AuditEventModelProcessor;
 import org.graylog2.configuration.HttpConfiguration;
@@ -46,13 +48,19 @@ import org.graylog2.shared.rest.CORSFilter;
 import org.graylog2.shared.rest.NodeIdResponseFilter;
 import org.graylog2.shared.rest.NotAuthorizedResponseFilter;
 import org.graylog2.shared.rest.PrintModelProcessor;
+import org.graylog2.shared.rest.RequestIdFilter;
 import org.graylog2.shared.rest.RestAccessLogFilter;
+import org.graylog2.shared.rest.VerboseCsrfProtectionFilter;
 import org.graylog2.shared.rest.XHRFilter;
 import org.graylog2.shared.rest.exceptionmappers.AnyExceptionClassMapper;
 import org.graylog2.shared.rest.exceptionmappers.BadRequestExceptionMapper;
 import org.graylog2.shared.rest.exceptionmappers.JacksonPropertyExceptionMapper;
+import org.graylog2.shared.rest.exceptionmappers.JsonMappingExceptionMapper;
 import org.graylog2.shared.rest.exceptionmappers.JsonProcessingExceptionMapper;
+import org.graylog2.shared.rest.exceptionmappers.MissingStreamPermissionExceptionMapper;
 import org.graylog2.shared.rest.exceptionmappers.WebApplicationExceptionMapper;
+import org.graylog2.shared.security.ShiroRequestHeadersBinder;
+import org.graylog2.shared.security.ShiroSecurityContextFilter;
 import org.graylog2.shared.security.tls.KeyStoreUtils;
 import org.graylog2.shared.security.tls.PemKeyStore;
 import org.slf4j.Logger;
@@ -94,6 +102,7 @@ public class JerseyService extends AbstractIdleService {
     private static final String RESOURCE_PACKAGE_WEB = "org.graylog2.web.resources";
 
     private final HttpConfiguration configuration;
+    private final Configuration graylogConfiguration;
     private final Map<String, Set<Class<? extends PluginRestResource>>> pluginRestResources;
     private final Set<RestControllerPackage> restControllerPackages;
 
@@ -110,7 +119,7 @@ public class JerseyService extends AbstractIdleService {
 
     @Inject
     public JerseyService(final HttpConfiguration configuration,
-                         Set<Class<? extends DynamicFeature>> dynamicFeatures,
+                         Configuration graylogConfiguration, Set<Class<? extends DynamicFeature>> dynamicFeatures,
                          Set<Class<? extends ContainerResponseFilter>> containerResponseFilters,
                          Set<Class<? extends ExceptionMapper>> exceptionMappers,
                          @Named("additionalJerseyComponents") final Set<Class> additionalComponents,
@@ -121,6 +130,7 @@ public class JerseyService extends AbstractIdleService {
                          MetricRegistry metricRegistry,
                          ErrorPageGenerator errorPageGenerator) {
         this.configuration = requireNonNull(configuration, "configuration");
+        this.graylogConfiguration = graylogConfiguration;
         this.dynamicFeatures = requireNonNull(dynamicFeatures, "dynamicFeatures");
         this.containerResponseFilters = requireNonNull(containerResponseFilters, "containerResponseFilters");
         this.exceptionMappers = requireNonNull(exceptionMappers, "exceptionMappers");
@@ -239,14 +249,20 @@ public class JerseyService extends AbstractIdleService {
                 .register(new PrefixAddingModelProcessor(packagePrefixes))
                 .register(new AuditEventModelProcessor(pluginAuditEventTypes))
                 .registerClasses(
+                        ShiroSecurityContextFilter.class,
+                        ShiroRequestHeadersBinder.class,
+                        VerboseCsrfProtectionFilter.class,
                         JacksonJaxbJsonProvider.class,
                         JsonProcessingExceptionMapper.class,
+                        JsonMappingExceptionMapper.class,
                         JacksonPropertyExceptionMapper.class,
                         AnyExceptionClassMapper.class,
+                        MissingStreamPermissionExceptionMapper.class,
                         WebApplicationExceptionMapper.class,
                         BadRequestExceptionMapper.class,
                         RestAccessLogFilter.class,
                         NodeIdResponseFilter.class,
+                        RequestIdFilter.class,
                         XHRFilter.class,
                         NotAuthorizedResponseFilter.class,
                         WebAppNotFoundResponseFilter.class)
@@ -256,6 +272,7 @@ public class JerseyService extends AbstractIdleService {
                         return objectMapper;
                     }
                 })
+                .register(new UserContextBinder())
                 .packages(true, controllerPackages)
                 .packages(true, RESOURCE_PACKAGE_WEB)
                 .registerResources(additionalResources);
@@ -342,7 +359,11 @@ public class JerseyService extends AbstractIdleService {
         sslContextConfigurator.setKeyStoreBytes(KeyStoreUtils.getBytes(keyStore, password));
 
         final SSLContext sslContext = sslContextConfigurator.createSSLContext(true);
-        return new SSLEngineConfigurator(sslContext, false, false, false);
+        final SSLEngineConfigurator sslEngineConfigurator = new SSLEngineConfigurator(sslContext, false, false, false);
+        if (!graylogConfiguration.getEnabledTlsProtocols().isEmpty()) {
+            sslEngineConfigurator.setEnabledProtocols(graylogConfiguration.getEnabledTlsProtocols().toArray(new String[0]));
+        }
+        return sslEngineConfigurator;
     }
 
     private ExecutorService instrumentedExecutor(final String executorName,

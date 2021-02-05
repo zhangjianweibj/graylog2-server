@@ -1,17 +1,34 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
 
 import StoreProvider from 'injection/StoreProvider';
+import { NodeMaintenanceDropdown, NodeOverview } from 'components/nodes';
+import { DocumentTitle, PageErrorOverview, PageHeader, Spinner } from 'components/common';
+import withParams from 'routing/withParams';
+
 const NodesStore = StoreProvider.getStore('Nodes');
 const ClusterOverviewStore = StoreProvider.getStore('ClusterOverview');
 const PluginsStore = StoreProvider.getStore('Plugins');
 const InputStatesStore = StoreProvider.getStore('InputStates');
 const InputTypesStore = StoreProvider.getStore('InputTypes');
-
-import { NodeMaintenanceDropdown, NodeOverview } from 'components/nodes';
-import { DocumentTitle, PageErrorOverview, PageHeader, Spinner } from 'components/common';
 
 function nodeFilter(state) {
   return state.nodes ? state.nodes[this.props.params.nodeId] : state.nodes;
@@ -41,17 +58,19 @@ const ShowNodePage = createReactClass({
     };
   },
 
-  componentWillMount() {
+  UNSAFE_componentWillMount() {
     Promise.all([
       ClusterOverviewStore.jvm(this.props.params.nodeId)
-        .then(jvmInformation => this.setState({ jvmInformation: jvmInformation })),
-      PluginsStore.list(this.props.params.nodeId).then(plugins => this.setState({ plugins: plugins })),
+        .then((jvmInformation) => this.setState({ jvmInformation: jvmInformation })),
+      PluginsStore.list(this.props.params.nodeId).then((plugins) => this.setState({ plugins: plugins })),
       InputStatesStore.list().then((inputStates) => {
         // We only want the input states for the current node
         const inputIds = Object.keys(inputStates);
         const filteredInputStates = [];
+
         inputIds.forEach((inputId) => {
           const inputObject = inputStates[inputId][this.props.params.nodeId];
+
           if (inputObject) {
             filteredInputStates.push(inputObject);
           }
@@ -59,7 +78,7 @@ const ShowNodePage = createReactClass({
 
         this.setState({ inputStates: filteredInputStates });
       }),
-    ]).then(() => {}, errors => this.setState({ errors: errors }));
+    ]).then(() => {}, (errors) => this.setState({ errors: errors }));
   },
 
   _isLoading() {
@@ -70,10 +89,12 @@ const ShowNodePage = createReactClass({
     if (this.state.errors) {
       return <PageErrorOverview errors={[this.state.errors]} />;
     }
+
     if (this._isLoading()) {
       return <Spinner />;
     }
-    const node = this.state.node;
+
+    const { node } = this.state;
     const title = <span>Node {node.short_node_id} / {node.hostname}</span>;
 
     return (
@@ -88,13 +109,16 @@ const ShowNodePage = createReactClass({
             </span>
             <span><NodeMaintenanceDropdown node={node} /></span>
           </PageHeader>
-          <NodeOverview node={node} systemOverview={this.state.systemOverview}
-                        jvmInformation={this.state.jvmInformation} plugins={this.state.plugins}
-                        inputStates={this.state.inputStates} inputDescriptions={this.state.inputDescriptions} />
+          <NodeOverview node={node}
+                        systemOverview={this.state.systemOverview}
+                        jvmInformation={this.state.jvmInformation}
+                        plugins={this.state.plugins}
+                        inputStates={this.state.inputStates}
+                        inputDescriptions={this.state.inputDescriptions} />
         </div>
       </DocumentTitle>
     );
   },
 });
 
-export default ShowNodePage;
+export default withParams(ShowNodePage);

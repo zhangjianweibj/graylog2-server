@@ -1,16 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert, Button } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
 
+import { LinkContainer } from 'components/graylog/router';
+import { Alert, Button } from 'components/graylog';
 import { PaginatedList, Spinner, Timestamp } from 'components/common';
-
 import CombinedProvider from 'injection/CombinedProvider';
-const { UniversalSearchStore } = CombinedProvider.get('UniversalSearch');
-
 import Routes from 'routing/Routes';
 import DateTime from 'logic/datetimes/DateTime';
 import UserNotification from 'util/UserNotification';
+
+const { UniversalSearchStore } = CombinedProvider.get('UniversalSearch');
 
 class AlertMessages extends React.Component {
   static propTypes = {
@@ -31,17 +46,20 @@ class AlertMessages extends React.Component {
 
   _getFrom = () => {
     const momentFrom = DateTime.parseFromString(this.props.alert.triggered_at).toMoment();
+
     return momentFrom.subtract(1, 'minute').toISOString();
   };
 
   _getTo = () => {
-    const alert = this.props.alert;
+    const { alert } = this.props;
     let momentTo;
+
     if (alert.is_interval) {
       momentTo = (alert.resolved_at ? DateTime.parseFromString(alert.resolved_at).toMoment().add(1, 'minute') : DateTime.now());
     } else {
       momentTo = DateTime.parseFromString(alert.triggered_at).toMoment().add(1, 'minute');
     }
+
     return momentTo.toISOString();
   };
 
@@ -52,6 +70,7 @@ class AlertMessages extends React.Component {
     };
     const promise = UniversalSearchStore.search('absolute', '*', searchParams, this.props.stream.id, this.PAGE_SIZE,
       page || 1, 'timestamp', 'asc', undefined, false);
+
     promise.then(
       (response) => {
         if (response.total_results > 0) {
@@ -129,7 +148,7 @@ class AlertMessages extends React.Component {
       );
     }
 
-    const messages = this.state.messages;
+    const { messages } = this.state;
 
     if (messages.length === 0) {
       return (
@@ -143,7 +162,9 @@ class AlertMessages extends React.Component {
     return (
       <div>
         {title}
-        <PaginatedList pageSize={this.PAGE_SIZE} onChange={this._onPageChange} totalItems={this.state.totalMessages}
+        <PaginatedList pageSize={this.PAGE_SIZE}
+                       onChange={this._onPageChange}
+                       totalItems={this.state.totalMessages}
                        showPageSizeSelect={false}>
           <div className="table-responsive">
             <table className="table table-striped table-hover table-condensed">

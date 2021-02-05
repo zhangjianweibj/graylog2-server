@@ -1,42 +1,35 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.configuration;
 
 import com.github.joschi.jadconfig.Parameter;
-import com.github.joschi.jadconfig.ValidationException;
-import com.github.joschi.jadconfig.ValidatorMethod;
-import com.github.joschi.jadconfig.converters.StringListConverter;
 import com.github.joschi.jadconfig.util.Duration;
-import com.github.joschi.jadconfig.validators.FilePathReadableValidator;
-import com.github.joschi.jadconfig.validators.InetPortValidator;
 import com.github.joschi.jadconfig.validators.PositiveDurationValidator;
 import com.github.joschi.jadconfig.validators.PositiveIntegerValidator;
 import com.github.joschi.jadconfig.validators.PositiveLongValidator;
+import com.github.joschi.jadconfig.validators.StringNotBlankValidator;
 import org.joda.time.Period;
 
-import javax.validation.constraints.NotNull;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
 import java.util.Locale;
 
 public class ElasticsearchConfiguration {
+    public static final String DEFAULT_EVENTS_INDEX_PREFIX = "default_events_index_prefix";
+    public static final String DEFAULT_SYSTEM_EVENTS_INDEX_PREFIX = "default_system_events_index_prefix";
+
     @Parameter(value = "elasticsearch_disable_version_check")
     private boolean disableVersionCheck = false;
 
@@ -95,9 +88,6 @@ public class ElasticsearchConfiguration {
     @Parameter(value = "index_optimization_max_num_segments", validator = PositiveIntegerValidator.class)
     private int indexOptimizationMaxNumSegments = 1;
 
-    @Parameter(value = "elasticsearch_request_timeout", validator = PositiveDurationValidator.class)
-    private Duration requestTimeout = Duration.minutes(1L);
-
     @Parameter(value = "elasticsearch_index_optimization_timeout", validator = PositiveDurationValidator.class)
     private Duration indexOptimizationTimeout = Duration.hours(1L);
 
@@ -106,6 +96,12 @@ public class ElasticsearchConfiguration {
 
     @Parameter(value = "index_field_type_periodical_interval", validator = PositiveDurationValidator.class)
     private Duration indexFieldTypePeriodicalInterval = Duration.hours(1L);
+
+    @Parameter(value = DEFAULT_EVENTS_INDEX_PREFIX, validators = StringNotBlankValidator.class)
+    private String defaultEventsIndexPrefix = "gl-events";
+
+    @Parameter(value = DEFAULT_SYSTEM_EVENTS_INDEX_PREFIX, validators = StringNotBlankValidator.class)
+    private String defaultSystemEventsIndexPrefix = "gl-system-events";
 
     public boolean isDisableVersionCheck() {
         return disableVersionCheck;
@@ -180,10 +176,6 @@ public class ElasticsearchConfiguration {
         return disableIndexOptimization;
     }
 
-    public Duration getRequestTimeout() {
-        return requestTimeout;
-    }
-
     public Duration getIndexOptimizationTimeout() {
         return indexOptimizationTimeout;
     }
@@ -194,5 +186,13 @@ public class ElasticsearchConfiguration {
 
     public Duration getIndexFieldTypePeriodicalInterval() {
         return indexFieldTypePeriodicalInterval;
+    }
+
+    public String getDefaultEventsIndexPrefix() {
+        return defaultEventsIndexPrefix;
+    }
+
+    public String getDefaultSystemEventsIndexPrefix() {
+        return defaultSystemEventsIndexPrefix;
     }
 }

@@ -1,20 +1,19 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
-
 package org.graylog2.streams;
 
 import com.codahale.metrics.Timer;
@@ -54,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 public class StreamRouterEngine {
     private static final Logger LOG = LoggerFactory.getLogger(StreamRouterEngine.class);
 
-    private final EnumSet<StreamRuleType> ruleTypesNotNeedingFieldPresence = EnumSet.of(StreamRuleType.PRESENCE, StreamRuleType.EXACT, StreamRuleType.REGEX, StreamRuleType.ALWAYS_MATCH);
+    private final EnumSet<StreamRuleType> ruleTypesNotNeedingFieldPresence = EnumSet.of(StreamRuleType.PRESENCE, StreamRuleType.EXACT, StreamRuleType.REGEX, StreamRuleType.ALWAYS_MATCH, StreamRuleType.CONTAINS, StreamRuleType.MATCH_INPUT);
     private final List<Stream> streams;
     private final StreamFaultManager streamFaultManager;
     private final StreamMetrics streamMetrics;
@@ -90,6 +89,7 @@ public class StreamRouterEngine {
         final List<Rule> smallerRules = Lists.newArrayList();
         final List<Rule> regexRules = Lists.newArrayList();
         final List<Rule> containsRules = Lists.newArrayList();
+        final List<Rule> matchInputRules = Lists.newArrayList();
 
         for (Stream stream : streams) {
             for (StreamRule streamRule : stream.getStreamRules()) {
@@ -122,15 +122,19 @@ public class StreamRouterEngine {
                     case CONTAINS:
                         containsRules.add(rule);
                         break;
+                    case MATCH_INPUT:
+                        matchInputRules.add(rule);
+                        break;
                 }
             }
         }
 
-        final int size = alwaysMatchRules.size() + presenceRules.size() + exactRules.size() + greaterRules.size() + smallerRules.size() + containsRules.size() + regexRules.size();
+        final int size = alwaysMatchRules.size() + presenceRules.size() + exactRules.size() + greaterRules.size() + smallerRules.size() + containsRules.size() + regexRules.size() + matchInputRules.size();
         this.rulesList = Lists.newArrayListWithCapacity(size);
         this.rulesList.addAll(alwaysMatchRules);
         this.rulesList.addAll(presenceRules);
         this.rulesList.addAll(exactRules);
+        this.rulesList.addAll(matchInputRules);
         this.rulesList.addAll(greaterRules);
         this.rulesList.addAll(smallerRules);
         this.rulesList.addAll(containsRules);
@@ -163,10 +167,10 @@ public class StreamRouterEngine {
      */
     public List<Stream> match(Message message) {
         final Set<Stream> result = Sets.newHashSet();
-        final Set<Stream> blackList = Sets.newHashSet();
+        final Set<String> blackList = Sets.newHashSet();
 
         for (final Rule rule : rulesList) {
-            if (blackList.contains(rule.getStream())) {
+            if (blackList.contains(rule.getStreamId())) {
                 continue;
             }
 
@@ -178,7 +182,7 @@ public class StreamRouterEngine {
                 if (matchingType == Stream.MatchingType.AND) {
                     result.remove(rule.getStream());
                     // blacklist stream because it can't match anymore
-                    blackList.add(rule.getStream());
+                    blackList.add(rule.getStreamId());
                 }
 
                 continue;
@@ -195,13 +199,13 @@ public class StreamRouterEngine {
                 if (matchingType == Stream.MatchingType.AND) {
                     result.remove(rule.getStream());
                     // blacklist stream because it can't match anymore
-                    blackList.add(rule.getStream());
+                    blackList.add(rule.getStreamId());
                 }
             } else {
                 result.add(stream);
                 if (matchingType == Stream.MatchingType.OR) {
                     // blacklist stream because it is already matched
-                    blackList.add(rule.getStream());
+                    blackList.add(rule.getStreamId());
                 }
             }
         }
@@ -264,12 +268,16 @@ public class StreamRouterEngine {
     private class Rule {
         private final Stream stream;
         private final StreamRule rule;
+        private final String streamId;
+        private final String streamRuleId;
         private final StreamRuleMatcher matcher;
         private final Stream.MatchingType matchingType;
 
         public Rule(Stream stream, StreamRule rule, Stream.MatchingType matchingType) throws InvalidStreamRuleTypeException {
             this.stream = stream;
             this.rule = rule;
+            this.streamId = stream.getId();
+            this.streamRuleId = rule.getId();
             this.matchingType = matchingType;
             this.matcher = StreamRuleMatcherFactory.build(rule.getType());
         }
@@ -281,7 +289,7 @@ public class StreamRouterEngine {
         @Nullable
         public Stream match(Message message) {
             // TODO Add missing message recordings!
-            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(rule.getId()).time()) {
+            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(streamId, streamRuleId).time()) {
                 if (matcher.match(message, rule)) {
                     return stream;
                 } else {
@@ -291,7 +299,7 @@ public class StreamRouterEngine {
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Error matching stream rule <" + rule.getType() + "/" + rule.getValue() + ">: " + e.getMessage(), e);
                 }
-                streamMetrics.markExceptionMeter(rule.getStreamId());
+                streamMetrics.markExceptionMeter(streamId);
                 return null;
             }
         }
@@ -299,7 +307,7 @@ public class StreamRouterEngine {
         @Nullable
         private Stream matchWithTimeOut(final Message message, long timeout, TimeUnit unit) {
             Stream matchedStream = null;
-            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(rule.getId()).time()) {
+            try (final Timer.Context ignored = streamMetrics.getExecutionTimer(streamId, streamRuleId).time()) {
                 matchedStream = timeLimiter.callWithTimeout(new Callable<Stream>() {
                     @Override
                     @Nullable
@@ -311,7 +319,7 @@ public class StreamRouterEngine {
                 streamFaultManager.registerFailure(stream);
             } catch (Exception e) {
                 LOG.warn("Unexpected error during stream matching", e);
-                streamMetrics.markExceptionMeter(rule.getStreamId());
+                streamMetrics.markExceptionMeter(streamId);
             }
 
             return matchedStream;
@@ -323,6 +331,10 @@ public class StreamRouterEngine {
 
         public Stream getStream() {
             return stream;
+        }
+
+        public String getStreamId() {
+            return streamId;
         }
     }
 

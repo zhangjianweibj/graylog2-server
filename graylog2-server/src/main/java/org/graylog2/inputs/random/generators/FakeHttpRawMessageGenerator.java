@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.random.generators;
 
@@ -38,16 +38,16 @@ public class FakeHttpRawMessageGenerator {
     private static final Random RANDOM = new Random();
     private static final int MAX_WEIGHT = 50;
 
-    private static final List<Resource> GET_RESOURCES = ImmutableList.of(
+    private static final ImmutableList<Resource> GET_RESOURCES = ImmutableList.of(
             new Resource("/login", "LoginController", "login", 10),
             new Resource("/users", "UsersController", "index", 2),
             new Resource("/posts", "PostsController", "index", 40),
             new Resource("/posts/45326", "PostsController", "show", 12),
             new Resource("/posts/45326/edit", "PostsController", "edit", 1));
 
-    private static final Map<String, Resource> RESOURCE_MAP = Maps.uniqueIndex(GET_RESOURCES, Resource::getResource);
+    private static final ImmutableMap<String, Resource> RESOURCE_MAP = Maps.uniqueIndex(GET_RESOURCES, Resource::getResource);
 
-    private static final List<UserId> USER_IDS = ImmutableList.of(
+    private static final ImmutableList<UserId> USER_IDS = ImmutableList.of(
             new UserId(9001, 10),
             new UserId(54351, 1),
             new UserId(74422, 5),

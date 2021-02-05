@@ -1,26 +1,27 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.tools;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.Lists;
-import oi.thekraken.grok.api.Grok;
-import oi.thekraken.grok.api.Match;
-import oi.thekraken.grok.api.exception.GrokException;
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.GrokCompiler;
+import io.krakens.grok.api.Match;
+import io.krakens.grok.api.exception.GrokException;
 import org.apache.shiro.authz.annotation.RequiresAuthentication;
 import org.graylog2.audit.jersey.NoAuditEvent;
 import org.graylog2.grok.GrokPattern;
@@ -78,19 +79,24 @@ public class GrokTesterResource extends RestResource {
     private GrokTesterResponse doTestGrok(String string, String pattern, boolean namedCapturesOnly) throws GrokException {
         final Set<GrokPattern> grokPatterns = grokPatternService.loadAll();
 
-        final Grok grok = new Grok();
+        final GrokCompiler grokCompiler = GrokCompiler.newInstance();
         for (GrokPattern grokPattern : grokPatterns) {
-            grok.addPattern(grokPattern.name(), grokPattern.pattern());
+            grokCompiler.register(grokPattern.name(), grokPattern.pattern());
         }
 
-        grok.compile(pattern, namedCapturesOnly);
+        final Grok grok;
+        try {
+            grok = grokCompiler.compile(pattern, namedCapturesOnly);
+        } catch (Exception e) {
+            return GrokTesterResponse.createError(pattern, string, e.getMessage());
+        }
+
         final Match match = grok.match(string);
-        match.captures();
-        final Map<String, Object> matches = match.toMap();
+        final Map<String, Object> matches = match.captureFlattened();
 
         final GrokTesterResponse response;
         if (matches.isEmpty()) {
-            response = GrokTesterResponse.create(false, Collections.<GrokTesterResponse.Match>emptyList(), pattern, string);
+            response = GrokTesterResponse.createSuccess(false, Collections.<GrokTesterResponse.Match>emptyList(), pattern, string);
         } else {
             final List<GrokTesterResponse.Match> responseMatches = Lists.newArrayList();
             for (final Map.Entry<String, Object> entry : matches.entrySet()) {
@@ -100,7 +106,7 @@ public class GrokTesterResource extends RestResource {
                 }
             }
 
-            response = GrokTesterResponse.create(true, responseMatches, pattern, string);
+            response = GrokTesterResponse.createSuccess(true, responseMatches, pattern, string);
         }
         return response;
     }

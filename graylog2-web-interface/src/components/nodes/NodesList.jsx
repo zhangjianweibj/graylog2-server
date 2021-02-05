@@ -1,14 +1,30 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Row, Col } from 'react-bootstrap';
+
+import { Row, Col } from 'components/graylog';
+import { Spinner, EntityList, Pluralize } from 'components/common';
+import StoreProvider from 'injection/StoreProvider';
 
 import NodeListItem from './NodeListItem';
-import { Spinner, EntityList, Pluralize } from 'components/common';
 
-import StoreProvider from 'injection/StoreProvider';
-const NodesStore = StoreProvider.getStore('Nodes');
 const ClusterOverviewStore = StoreProvider.getStore('ClusterOverview');
 
 const NodesList = createReactClass({
@@ -16,12 +32,16 @@ const NodesList = createReactClass({
 
   propTypes: {
     permissions: PropTypes.array.isRequired,
+    nodes: PropTypes.object,
   },
 
-  mixins: [Reflux.connect(NodesStore), Reflux.connect(ClusterOverviewStore)],
+  mixins: [Reflux.connect(ClusterOverviewStore)],
 
   _isLoading() {
-    return !(this.state.nodes && this.state.clusterOverview);
+    const { nodes } = this.props;
+    const { clusterOverview } = this.state;
+
+    return !(nodes && clusterOverview);
   },
 
   _formatNodes(nodes, clusterOverview) {
@@ -37,7 +57,7 @@ const NodesList = createReactClass({
       return <Spinner />;
     }
 
-    const nodesNo = Object.keys(this.state.nodes).length;
+    const nodesNo = Object.keys(this.props.nodes).length;
 
     return (
       <Row className="content">
@@ -45,8 +65,9 @@ const NodesList = createReactClass({
           <h2>
             There <Pluralize value={nodesNo} singular="is" plural="are" /> {nodesNo} active <Pluralize value={nodesNo} singular="node" plural="nodes" />
           </h2>
-          <EntityList bsNoItemsStyle="info" noItemsText="There are no active nodes."
-                      items={this._formatNodes(this.state.nodes, this.state.clusterOverview)} />
+          <EntityList bsNoItemsStyle="info"
+                      noItemsText="There are no active nodes."
+                      items={this._formatNodes(this.props.nodes, this.state.clusterOverview)} />
         </Col>
       </Row>
     );

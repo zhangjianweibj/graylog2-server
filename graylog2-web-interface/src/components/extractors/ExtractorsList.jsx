@@ -1,20 +1,36 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Row, Col, Button } from 'react-bootstrap';
 import naturalSort from 'javascript-natural-sort';
 
+import { Row, Col, Button } from 'components/graylog';
 import Spinner from 'components/common/Spinner';
 import AddExtractorWizard from 'components/extractors/AddExtractorWizard';
 import EntityList from 'components/common/EntityList';
+import ActionsProvider from 'injection/ActionsProvider';
+import StoreProvider from 'injection/StoreProvider';
+
 import ExtractorsListItem from './ExtractorsListItem';
 import ExtractorsSortModal from './ExtractorSortModal';
 
-import ActionsProvider from 'injection/ActionsProvider';
 const ExtractorsActions = ActionsProvider.getActions('Extractors');
-
-import StoreProvider from 'injection/StoreProvider';
 const ExtractorsStore = StoreProvider.getStore('Extractors');
 
 const ExtractorsList = createReactClass({
@@ -33,7 +49,9 @@ const ExtractorsList = createReactClass({
 
   _formatExtractor(extractor) {
     return (
-      <ExtractorsListItem key={extractor.id} extractor={extractor} inputId={this.props.input.id}
+      <ExtractorsListItem key={extractor.id}
+                          extractor={extractor}
+                          inputId={this.props.input.id}
                           nodeId={this.props.node.node_id} />
     );
   },
@@ -43,7 +61,7 @@ const ExtractorsList = createReactClass({
   },
 
   _openSortModal() {
-    this.refs.sortModal.open();
+    this.sortModal.open();
   },
 
   render() {
@@ -52,6 +70,7 @@ const ExtractorsList = createReactClass({
     }
 
     let sortExtractorsButton;
+
     if (this.state.extractors.length > 1) {
       sortExtractorsButton = (
         <Button bsSize="xsmall" bsStyle="primary" className="pull-right" onClick={this._openSortModal}>
@@ -77,11 +96,12 @@ const ExtractorsList = createReactClass({
                 {sortExtractorsButton}
               </Col>
             </Row>
-            <EntityList bsNoItemsStyle="info" noItemsText="This input has no configured extractors."
+            <EntityList bsNoItemsStyle="info"
+                        noItemsText="This input has no configured extractors."
                         items={formattedExtractors} />
           </Col>
         </Row>
-        <ExtractorsSortModal ref="sortModal" input={this.props.input} extractors={this.state.extractors} />
+        <ExtractorsSortModal ref={(sortModal) => { this.sortModal = sortModal; }} input={this.props.input} extractors={this.state.extractors} />
       </div>
     );
   },

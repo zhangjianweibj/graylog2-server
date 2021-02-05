@@ -1,40 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import React from 'react';
-import { Col, Row } from 'react-bootstrap';
 
-import DocumentationLink from 'components/support/DocumentationLink';
-import DocsHelper from 'util/DocsHelper';
+import { Col, Row } from 'components/graylog';
 
-class ContactUs extends React.Component {
-  render() {
-    return (
-      <Row className="content">
-        <Col md={12}>
-          <div className="support-sources">
-            <h2>Need help?</h2>
-            <p>
-              Do not hesitate to consult the Graylog community if your questions are not answered in the{' '}
-              <DocumentationLink page={DocsHelper.PAGES.WELCOME} text="documentation" />.
-            </p>
+import SupportSources from './SupportSources';
 
-            <ul>
-              <li>
-                <i className="fa fa-group" />&nbsp;
-                <a href="https://www.graylog.org/community-support/" target="_blank">Community support</a>
-              </li>
-              <li>
-                <i className="fa fa-github-alt" />&nbsp;
-                <a href="https://github.com/Graylog2/graylog2-server/issues" target="_blank">Issue tracker</a>
-              </li>
-              <li>
-                <i className="fa fa-heart" />&nbsp;
-                <a href="https://www.graylog.org/professional-support" target="_blank">Professional support</a>
-              </li>
-            </ul>
-          </div>
-        </Col>
-      </Row>
-    );
-  }
-}
+const ContactUs = () => (
+  <Row className="content">
+    <Col md={12}>
+      <SupportSources />
+    </Col>
+  </Row>
+);
 
 export default ContactUs;

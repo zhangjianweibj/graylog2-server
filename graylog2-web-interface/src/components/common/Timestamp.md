@@ -5,7 +5,7 @@ Simple example without transforming the given date time:
 
 Relative time:
 ```js
-const moment = require('moment');
+import moment from 'moment';
 const yesterday = moment().subtract(1, 'day');
 <span><Timestamp dateTime={yesterday} /> is <Timestamp dateTime={yesterday} relative />.</span>
 ```
@@ -16,9 +16,14 @@ const DateTime = require('logic/datetimes/DateTime');
 <Timestamp dateTime={new Date().toISOString()} format={DateTime.Formats.COMPLETE} />
 ```
 
+Showing date/time of Unix Timestamp (in millis):
+```js
+<Timestamp datetime={1554121284687} />
+```
+
 Time zone conversions:
 ```js
-const moment = require('moment');
+import moment from 'moment';
 const nowUtc = moment.utc();
 <dl>
   <dt>UTC</dt>

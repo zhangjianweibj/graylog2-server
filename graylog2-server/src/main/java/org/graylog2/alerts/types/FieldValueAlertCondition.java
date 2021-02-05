@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.alerts.types;
 
@@ -132,6 +132,7 @@ public class FieldValueAlertCondition extends AbstractAlertCondition {
     private final Number threshold;
     private final CheckType type;
     private final String field;
+    private final String query;
     private final DecimalFormat decimalFormat;
     private final Searches searches;
 
@@ -153,6 +154,7 @@ public class FieldValueAlertCondition extends AbstractAlertCondition {
         this.threshold = Tools.getNumber(parameters.get("threshold"), 0.0).doubleValue();
         this.type = CheckType.valueOf(((String) parameters.get("type")).toUpperCase(Locale.ENGLISH));
         this.field = (String) parameters.get("field");
+        this.query = (String) parameters.getOrDefault(CK_QUERY, CK_QUERY_DEFAULT_VALUE);
     }
 
     @Override
@@ -170,12 +172,12 @@ public class FieldValueAlertCondition extends AbstractAlertCondition {
     @Override
     public CheckResult runCheck() {
         try {
-            final String filter = "streams:" + stream.getId();
+            final String filter = buildQueryFilter(stream.getId(), query);
             // TODO we don't support cardinality yet
             final FieldStatsResult fieldStatsResult = searches.fieldStats(field, "*", filter,
                 RelativeRange.create(time * 60), false, true, false);
 
-            if (fieldStatsResult.getCount() == 0) {
+            if (fieldStatsResult.count() == 0) {
                 LOG.debug("Alert check <{}> did not match any messages. Returning not triggered.", type);
                 return new NegativeCheckResult();
             }
@@ -183,19 +185,19 @@ public class FieldValueAlertCondition extends AbstractAlertCondition {
             final double result;
             switch (type) {
                 case MEAN:
-                    result = fieldStatsResult.getMean();
+                    result = fieldStatsResult.mean();
                     break;
                 case MIN:
-                    result = fieldStatsResult.getMin();
+                    result = fieldStatsResult.min();
                     break;
                 case MAX:
-                    result = fieldStatsResult.getMax();
+                    result = fieldStatsResult.max();
                     break;
                 case SUM:
-                    result = fieldStatsResult.getSum();
+                    result = fieldStatsResult.sum();
                     break;
                 case STDDEV:
-                    result = fieldStatsResult.getStdDeviation();
+                    result = fieldStatsResult.stdDeviation();
                     break;
                 default:
                     LOG.error("No such field value check type: [{}]. Returning not triggered.", type);
@@ -230,7 +232,7 @@ public class FieldValueAlertCondition extends AbstractAlertCondition {
 
                 final List<MessageSummary> summaries;
                 if (getBacklog() > 0) {
-                    final List<ResultMessage> searchResult = fieldStatsResult.getSearchHits();
+                    final List<ResultMessage> searchResult = fieldStatsResult.searchHits();
                     summaries = Lists.newArrayListWithCapacity(searchResult.size());
                     for (ResultMessage resultMessage : searchResult) {
                         final Message msg = resultMessage.getMessage();

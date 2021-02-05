@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 const webpack = require('webpack');
 const merge = require('webpack-merge');
 const path = require('path');
@@ -7,7 +23,7 @@ const defaultRootPath = path.resolve(module.parent.parent.filename, '../');
 const defaultOptions = {
   root_path: defaultRootPath,
   entry_path: path.resolve(defaultRootPath, 'src/web/index.jsx'),
-  build_path: path.resolve(defaultRootPath, 'build'),
+  build_path: path.resolve(defaultRootPath, 'target/web/build'),
 };
 
 function getPluginFullName(fqcn) {

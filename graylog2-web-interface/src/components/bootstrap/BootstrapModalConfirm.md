@@ -1,7 +1,6 @@
 ```js
-const React = require('react');
-const createReactClass = require('create-react-class');
-const { Button } = require('react-bootstrap');
+import createReactClass from 'create-react-class';
+import { Button } from 'components/graylog';
 
 const BootstrapModalConfirmExample = createReactClass({
   getInitialState() {

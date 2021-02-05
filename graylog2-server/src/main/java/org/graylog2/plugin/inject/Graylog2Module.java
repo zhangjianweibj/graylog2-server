@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin.inject;
 
@@ -27,13 +27,16 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.OptionalBinder;
 import com.google.inject.name.Names;
 import org.apache.shiro.realm.AuthenticatingRealm;
+import org.apache.shiro.realm.AuthorizingRealm;
 import org.graylog2.audit.AuditEventSender;
 import org.graylog2.audit.AuditEventType;
 import org.graylog2.audit.PluginAuditEventTypes;
 import org.graylog2.audit.formatter.AuditEventFormatter;
+import org.graylog2.contentpacks.constraints.ConstraintChecker;
+import org.graylog2.contentpacks.facades.EntityFacade;
+import org.graylog2.contentpacks.model.ModelType;
 import org.graylog2.migrations.Migration;
 import org.graylog2.plugin.alarms.AlertCondition;
-import org.graylog2.plugin.dashboards.widgets.WidgetStrategy;
 import org.graylog2.plugin.decorators.SearchResponseDecorator;
 import org.graylog2.plugin.indexer.retention.RetentionStrategy;
 import org.graylog2.plugin.indexer.rotation.RotationStrategy;
@@ -238,6 +241,8 @@ public abstract class Graylog2Module extends AbstractModule {
         installInput(inputMapBinder, target, factoryClass);
     }
 
+    // This should only be used by plugins that have been built before Graylog 3.0.1.
+    // See comments in MessageOutput.Factory and MessageOutput.Factory2 for details
     protected MapBinder<String, MessageOutput.Factory<? extends MessageOutput>> outputsMapBinder() {
         return MapBinder.newMapBinder(binder(),
                 TypeLiteral.get(String.class),
@@ -245,9 +250,29 @@ public abstract class Graylog2Module extends AbstractModule {
                 });
     }
 
+    // This should only be used by plugins that have been built before Graylog 3.0.1.
+    // See comments in MessageOutput.Factory and MessageOutput.Factory2 for details
     protected <T extends MessageOutput> void installOutput(MapBinder<String, MessageOutput.Factory<? extends MessageOutput>> outputMapBinder,
                                                            Class<T> target,
                                                            Class<? extends MessageOutput.Factory<T>> targetFactory) {
+        install(new FactoryModuleBuilder().implement(MessageOutput.class, target).build(targetFactory));
+        outputMapBinder.addBinding(target.getCanonicalName()).to(Key.get(targetFactory));
+    }
+
+    // This should be used by plugins that have been built for 3.0.1 or later.
+    // See comments in MessageOutput.Factory and MessageOutput.Factory2 for details
+    protected MapBinder<String, MessageOutput.Factory2<? extends MessageOutput>> outputsMapBinder2() {
+        return MapBinder.newMapBinder(binder(),
+                TypeLiteral.get(String.class),
+                new TypeLiteral<MessageOutput.Factory2<? extends MessageOutput>>() {
+                });
+    }
+
+    // This should be used by plugins that have been built for 3.0.1 or later.
+    // See comments in MessageOutput.Factory and MessageOutput.Factory2 for details
+    protected <T extends MessageOutput> void installOutput2(MapBinder<String, MessageOutput.Factory2<? extends MessageOutput>> outputMapBinder,
+                                                           Class<T> target,
+                                                           Class<? extends MessageOutput.Factory2<T>> targetFactory) {
         install(new FactoryModuleBuilder().implement(MessageOutput.class, target).build(targetFactory));
         outputMapBinder.addBinding(target.getCanonicalName()).to(Key.get(targetFactory));
     }
@@ -263,26 +288,6 @@ public abstract class Graylog2Module extends AbstractModule {
         }
 
         installOutput(outputMapBinder, target, factoryClass);
-    }
-
-    protected MapBinder<String, WidgetStrategy.Factory<? extends WidgetStrategy>> widgetStrategyBinder() {
-        return MapBinder.newMapBinder(binder(), TypeLiteral.get(String.class), new TypeLiteral<WidgetStrategy.Factory<? extends WidgetStrategy>>() {
-        });
-    }
-
-    protected void installWidgetStrategy(MapBinder<String, WidgetStrategy.Factory<? extends WidgetStrategy>> widgetStrategyBinder,
-                                         Class<? extends WidgetStrategy> target,
-                                         Class<? extends WidgetStrategy.Factory<? extends WidgetStrategy>> targetFactory) {
-        install(new FactoryModuleBuilder().implement(WidgetStrategy.class, target).build(targetFactory));
-        widgetStrategyBinder.addBinding(target.getCanonicalName()).to(Key.get(targetFactory));
-    }
-
-    protected void installWidgetStrategyWithAlias(MapBinder<String, WidgetStrategy.Factory<? extends WidgetStrategy>> widgetStrategyBinder,
-                                                  String key,
-                                                  Class<? extends WidgetStrategy> target,
-                                                  Class<? extends WidgetStrategy.Factory<? extends WidgetStrategy>> targetFactory) {
-        installWidgetStrategy(widgetStrategyBinder, target, targetFactory);
-        widgetStrategyBinder.addBinding(key).to(Key.get(targetFactory));
     }
 
     protected Multibinder<PluginPermissions> permissionsBinder() {
@@ -350,6 +355,10 @@ public abstract class Graylog2Module extends AbstractModule {
         return MapBinder.newMapBinder(binder(), String.class, AuthenticatingRealm.class);
     }
 
+    protected MapBinder<String, AuthorizingRealm> authorizationOnlyRealmBinder() {
+        return MapBinder.newMapBinder(binder(), String.class, AuthorizingRealm.class);
+    }
+
     protected MapBinder<String, SearchResponseDecorator.Factory> searchResponseDecoratorBinder() {
         return MapBinder.newMapBinder(binder(), String.class, SearchResponseDecorator.Factory.class);
     }
@@ -398,12 +407,25 @@ public abstract class Graylog2Module extends AbstractModule {
         return MapBinder.newMapBinder(binder(), String.class, LookupDataAdapter.Factory.class);
     }
 
+    protected MapBinder<String, LookupDataAdapter.Factory2> lookupDataAdapterBinder2() {
+        return MapBinder.newMapBinder(binder(), String.class, LookupDataAdapter.Factory2.class);
+    }
+
     protected void installLookupDataAdapter(String name,
                                             Class<? extends LookupDataAdapter> adapterClass,
                                             Class<? extends LookupDataAdapter.Factory> factoryClass,
                                             Class<? extends LookupDataAdapterConfiguration> configClass) {
         install(new FactoryModuleBuilder().implement(LookupDataAdapter.class, adapterClass).build(factoryClass));
         lookupDataAdapterBinder().addBinding(name).to(factoryClass);
+        registerJacksonSubtype(configClass, name);
+    }
+
+    protected void installLookupDataAdapter2(String name,
+                                            Class<? extends LookupDataAdapter> adapterClass,
+                                            Class<? extends LookupDataAdapter.Factory2> factoryClass,
+                                            Class<? extends LookupDataAdapterConfiguration> configClass) {
+        install(new FactoryModuleBuilder().implement(LookupDataAdapter.class, adapterClass).build(factoryClass));
+        lookupDataAdapterBinder2().addBinding(name).to(factoryClass);
         registerJacksonSubtype(configClass, name);
     }
 
@@ -433,6 +455,14 @@ public abstract class Graylog2Module extends AbstractModule {
 
     protected Multibinder<Migration> migrationsBinder() {
         return Multibinder.newSetBinder(binder(), Migration.class);
+    }
+
+    protected MapBinder<ModelType, EntityFacade<?>> entityFacadeBinder() {
+        return MapBinder.newMapBinder(binder(), new TypeLiteral<ModelType>() {}, new TypeLiteral<EntityFacade<?>>() {});
+    }
+
+    protected Multibinder<ConstraintChecker> constraintCheckerBinder() {
+        return Multibinder.newSetBinder(binder(), ConstraintChecker.class);
     }
 
     private static class DynamicFeatureType extends TypeLiteral<Class<? extends DynamicFeature>> {}

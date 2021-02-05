@@ -1,22 +1,22 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
-
 package org.graylog2.shared.rest.resources;
 
+import com.google.auto.value.AutoValue;
 import org.graylog2.cluster.Node;
 import org.graylog2.cluster.NodeNotFoundException;
 import org.graylog2.cluster.NodeService;
@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Response;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import java.io.IOException;
@@ -81,7 +82,11 @@ public abstract class ProxiedResource extends RestResource {
                                     return Optional.<FinalResponseType>empty();
                                 }
                             } catch (IOException e) {
-                                LOG.warn("Unable to call {} on node <{}>", call.request().url(), node, e);
+                                if (LOG.isDebugEnabled()) {
+                                    LOG.warn("Unable to call {} on node <{}>", call.request().url(), node, e);
+                                } else {
+                                    LOG.warn("Unable to call {} on node <{}>: {}", call.request().url(), node, e.getMessage());
+                                }
                                 return Optional.<FinalResponseType>empty();
                             }
                         }))
@@ -111,5 +116,81 @@ public abstract class ProxiedResource extends RestResource {
                 return Optional.empty();
             }
         };
+    }
+
+    /**
+     * Execute the given remote interface function on the master node.
+     * <p>
+     * This is used to forward an API request to the master node. It is useful in situations where an API call can
+     * only be executed on the master node.
+     * <p>
+     * The returned {@link MasterResponse} object is constructed from the remote response's status code and body.
+     */
+    protected <RemoteInterfaceType, RemoteCallResponseType> MasterResponse<RemoteCallResponseType> requestOnMaster(
+            Function<RemoteInterfaceType, Call<RemoteCallResponseType>> remoteInterfaceFunction,
+            Function<String, Optional<RemoteInterfaceType>> remoteInterfaceProvider
+    ) throws IOException {
+        final Node masterNode = nodeService.allActive().values().stream()
+                .filter(Node::isMaster)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No active master node found"));
+
+        final RemoteInterfaceType remoteInterfaceType = remoteInterfaceProvider.apply(masterNode.getNodeId())
+                .orElseThrow(() -> new IllegalStateException("Master node " + masterNode.getNodeId() + " not found"));
+
+        final Call<RemoteCallResponseType> call = remoteInterfaceFunction.apply(remoteInterfaceType);
+        final Response<RemoteCallResponseType> response = call.execute();
+
+        final byte[] errorBody = response.errorBody() == null ? null : response.errorBody().bytes();
+
+        return MasterResponse.create(response.isSuccessful(), response.code(), response.body(), errorBody);
+    }
+
+    @AutoValue
+    protected static abstract class MasterResponse<ResponseType> {
+        /**
+         * Indicates whether the request has been successful or not.
+         * @return {@code true} for a successful request, {@code false} otherwise
+         */
+        public abstract boolean isSuccess();
+
+        /**
+         * Returns the HTTP status code of the response.
+         *
+         * @return HTTP status code
+         */
+        public abstract int code();
+
+        /**
+         * Returns the typed response object if the request was successful. Otherwise it returns an empty {@link Optional}.
+         *
+         * @return typed response object or empty {@link Optional}
+         */
+        public abstract Optional<ResponseType> entity();
+
+        /**
+         * Returns the error response if the request wasn't successful. Otherwise it returns an empty {@link Optional}.
+         * @return error response or empty {@link Optional}
+         */
+        public abstract Optional<byte[]> error();
+
+        /**
+         * Convenience method that returns either the body of a successful request or if that one is {@code null},
+         * it returns the error body.
+         * <p>
+         * Use {@link #entity()} the get the typed response object. (only available if {@link #isSuccess()} is {@code true})
+         *
+         * @return either the {@link #entity()} or the {@link #error()}
+         */
+        public Object body() {
+            return entity().isPresent() ? entity().get() : error().orElse(null);
+        }
+
+        public static <ResponseType> MasterResponse<ResponseType> create(boolean isSuccess,
+                                                                         int code,
+                                                                         @Nullable ResponseType entity,
+                                                                         @Nullable byte[] error) {
+            return new AutoValue_ProxiedResource_MasterResponse<>(isSuccess, code, Optional.ofNullable(entity), Optional.ofNullable(error));
+        }
     }
 }

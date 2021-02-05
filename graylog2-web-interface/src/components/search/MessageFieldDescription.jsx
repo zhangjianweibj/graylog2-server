@@ -1,97 +1,83 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Alert } from 'react-bootstrap';
 import Immutable from 'immutable';
+import styled, { css } from 'styled-components';
 
-import StoreProvider from 'injection/StoreProvider';
-const SearchStore = StoreProvider.getStore('Search');
-// eslint-disable-next-line no-unused-vars
-const MessagesStore = StoreProvider.getStore('Messages');
+import { Alert } from 'components/graylog';
 
-import ActionsProvider from 'injection/ActionsProvider';
-const MessagesActions = ActionsProvider.getActions('Messages');
-
-import MessageFieldSearchActions from './MessageFieldSearchActions';
-
-import { DecoratedMessageFieldMarker } from 'components/search';
+const MessageTerms = styled.span(({ theme }) => css`
+  margin-right: 8px;
+  font-family: ${theme.fonts.family.monospace};
+`);
 
 class MessageFieldDescription extends React.Component {
   static propTypes = {
     message: PropTypes.object.isRequired,
     fieldName: PropTypes.string.isRequired,
-    fieldValue: PropTypes.any.isRequired,
     renderForDisplay: PropTypes.func.isRequired,
-    disableFieldActions: PropTypes.bool,
     customFieldActions: PropTypes.node,
-    isDecorated: PropTypes.bool,
   };
 
-  state = {
-    messageTerms: Immutable.List(),
+  static defaultProps = {
+    customFieldActions: undefined,
   };
 
-  loadTerms = (field) => {
-    return () => {
-      const promise = MessagesActions.fieldTerms.triggerPromise(this.props.message.index, this.props.message.fields[field]);
-      promise.then(terms => this._onTermsLoaded(terms));
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      messageTerms: Immutable.List(),
     };
-  };
-
-  _onTermsLoaded = (terms) => {
-    this.setState({ messageTerms: Immutable.fromJS(terms) });
-  };
+  }
 
   _shouldShowTerms = () => {
-    return this.state.messageTerms.size !== 0;
-  };
+    const { messageTerms } = this.state;
 
-  addFieldToSearchBar = (event) => {
-    event.preventDefault();
-    SearchStore.addSearchTerm(this.props.fieldName, this.props.fieldValue);
+    return messageTerms.size !== 0;
   };
 
   _getFormattedTerms = () => {
-    const termsMarkup = [];
-    this.state.messageTerms.forEach((term, idx) => {
-      termsMarkup.push(<span key={idx} className="message-terms">{term}</span>);
-    });
+    const { messageTerms } = this.state;
 
-    return termsMarkup;
+    return messageTerms.map((term) => <MessageTerms key={term}>{term}</MessageTerms>);
   };
 
   _getFormattedFieldActions = () => {
-    if (this.props.disableFieldActions) {
-      return null;
-    }
+    const { customFieldActions, fieldName, message } = this.props;
 
-    let fieldActions;
-    if (this.props.customFieldActions) {
-      fieldActions = React.cloneElement(this.props.customFieldActions, { fieldName: this.props.fieldName, message: this.props.message });
-    } else {
-      fieldActions = (
-        <MessageFieldSearchActions fieldName={this.props.fieldName}
-                                   message={this.props.message}
-                                   onAddFieldToSearchBar={this.addFieldToSearchBar}
-                                   onLoadTerms={this.loadTerms} />
-      );
-    }
-
-    return fieldActions;
+    return customFieldActions ? React.cloneElement(customFieldActions, { fieldName, message }) : null;
   };
 
   render() {
-    const className = this.props.fieldName === 'message' || this.props.fieldName === 'full_message' ? 'message-field' : '';
+    const { fieldName, renderForDisplay } = this.props;
+    const className = fieldName === 'message' || fieldName === 'full_message' ? 'message-field' : '';
 
     return (
-      <dd className={className} key={`${this.props.fieldName}dd`}>
+      <dd className={className} key={`${fieldName}dd`}>
         {this._getFormattedFieldActions()}
-        <div className="field-value">{this.props.renderForDisplay(this.props.fieldName)}</div>
-        {this._shouldShowTerms() &&
+        <div className="field-value">{renderForDisplay(fieldName)}</div>
+        {this._shouldShowTerms()
+        && (
         <Alert bsStyle="info" onDismiss={() => this.setState({ messageTerms: Immutable.Map() })}>
           Field terms: &nbsp;{this._getFormattedTerms()}
         </Alert>
-        }
-        {this.props.isDecorated && <DecoratedMessageFieldMarker />}
+        )}
       </dd>
     );
   }

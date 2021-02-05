@@ -1,106 +1,126 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import createReactClass from 'create-react-class';
-import Reflux from 'reflux';
-import { Button, ButtonToolbar, Col, Row } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+
+import { LinkContainer } from 'components/graylog/router';
+import connect from 'stores/connect';
+import { ButtonToolbar, Col, Row, Button } from 'components/graylog';
 import Routes from 'routing/Routes';
 import history from 'util/History';
 import { DocumentTitle, PageHeader, Spinner } from 'components/common';
-
 import { Cache, CacheCreate, CacheForm, CachesOverview } from 'components/lookup-tables';
-
 import CombinedProvider from 'injection/CombinedProvider';
+import withParams from 'routing/withParams';
+import withLocation from 'routing/withLocation';
 
 const { LookupTableCachesStore, LookupTableCachesActions } = CombinedProvider.get(
-  'LookupTableCaches');
+  'LookupTableCaches',
+);
 
-const LUTCachesPage = createReactClass({
-  displayName: 'LUTCachesPage',
-
-  propTypes: {
-    // eslint-disable-next-line react/no-unused-prop-types
-    params: PropTypes.object.isRequired,
-    route: PropTypes.object.isRequired,
-  },
-
-  mixins: [
-    Reflux.connect(LookupTableCachesStore),
-  ],
-
+class LUTCachesPage extends React.Component {
   componentDidMount() {
     this._loadData(this.props);
-  },
+  }
 
-  componentWillReceiveProps(nextProps) {
-    this._loadData(nextProps);
-  },
+  componentDidUpdate(prevProps) {
+    const { location: { pathname } } = this.props;
+    const { location: { pathname: prevPathname } } = prevProps;
 
-  _loadData(props) {
+    if (pathname !== prevPathname) {
+      this._loadData(this.props);
+    }
+  }
+
+  _loadData = (props) => {
+    const { pagination } = props;
+
     if (props.params && props.params.cacheName) {
       LookupTableCachesActions.get(props.params.cacheName);
     } else if (this._isCreating(props)) {
       LookupTableCachesActions.getTypes();
     } else {
-      const p = this.state.pagination;
-      LookupTableCachesActions.searchPaginated(p.page, p.per_page, p.query);
+      LookupTableCachesActions.searchPaginated(pagination.page, pagination.per_page, pagination.query);
     }
-  },
+  };
 
-  _saved() {
-    // reset detail state
-    this.setState({ cache: undefined });
+  _saved = () => {
     history.push(Routes.SYSTEM.LOOKUPTABLES.CACHES.OVERVIEW);
-  },
+  }
 
-  _isCreating(props) {
-    return props.route.action === 'create';
-  },
+  _isCreating = ({ action }) => {
+    return action === 'create';
+  }
 
-  _validateCache(adapter) {
+  _validateCache = (adapter) => {
     LookupTableCachesActions.validate(adapter);
-  },
+  };
 
   render() {
+    const {
+      action,
+      cache,
+      validationErrors,
+      types,
+      caches,
+      pagination,
+    } = this.props;
     let content;
-    const isShowing = this.props.route.action === 'show';
-    const isEditing = this.props.route.action === 'edit';
+    const isShowing = action === 'show';
+    const isEditing = action === 'edit';
 
     if (isShowing || isEditing) {
-      if (!this.state.cache) {
+      if (!cache) {
         content = <Spinner text="Loading data cache" />;
       } else if (isEditing) {
         content = (
           <Row className="content">
             <Col lg={12}>
-              <h2>Data Cache</h2>
-              <CacheForm cache={this.state.cache}
-                         type={this.state.cache.config.type}
+              <CacheForm cache={cache}
+                         type={cache.config.type}
+                         title="Data Cache"
                          create={false}
                          saved={this._saved}
                          validate={this._validateCache}
-                         validationErrors={this.state.validationErrors} />
+                         validationErrors={validationErrors} />
             </Col>
           </Row>
         );
       } else {
-        content = <Cache cache={this.state.cache} />;
+        content = <Cache cache={cache} />;
       }
     } else if (this._isCreating(this.props)) {
-      if (!this.state.types) {
+      if (!types) {
         content = <Spinner text="Loading data cache types" />;
       } else {
-        content =
-          (<CacheCreate types={this.state.types}
-                        saved={this._saved}
-                        validate={this._validateCache}
-                        validationErrors={this.state.validationErrors} />);
+        content = (
+          <CacheCreate types={types}
+                       saved={this._saved}
+                       validate={this._validateCache}
+                       validationErrors={validationErrors} />
+        );
       }
-    } else if (!this.state.caches) {
+    } else if (!caches) {
       content = <Spinner text="Loading caches" />;
     } else {
-      content = (<CachesOverview caches={this.state.caches}
-                                 pagination={this.state.pagination} />);
+      content = (
+        <CachesOverview caches={caches}
+                        pagination={pagination} />
+      );
     }
 
     return (
@@ -115,7 +135,7 @@ const LUTCachesPage = createReactClass({
                   <Button bsStyle="info">Lookup Tables</Button>
                 </LinkContainer>
                 <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.CACHES.OVERVIEW}>
-                  <Button bsStyle="info" className="active">Caches</Button>
+                  <Button bsStyle="info">Caches</Button>
                 </LinkContainer>
                 <LinkContainer to={Routes.SYSTEM.LOOKUPTABLES.DATA_ADAPTERS.OVERVIEW}>
                   <Button bsStyle="info">Data Adapters</Button>
@@ -128,7 +148,32 @@ const LUTCachesPage = createReactClass({
         </span>
       </DocumentTitle>
     );
-  },
-});
+  }
+}
 
-export default LUTCachesPage;
+LUTCachesPage.propTypes = {
+  cache: PropTypes.object,
+  validationErrors: PropTypes.object,
+  types: PropTypes.object,
+  caches: PropTypes.array,
+  location: PropTypes.object.isRequired,
+  pagination: PropTypes.object.isRequired,
+  action: PropTypes.string,
+};
+
+LUTCachesPage.defaultProps = {
+  cache: null,
+  validationErrors: {},
+  types: null,
+  caches: null,
+  action: undefined,
+};
+
+export default connect(
+  withParams(withLocation(LUTCachesPage)),
+  { cachesStore: LookupTableCachesStore },
+  ({ cachesStore, ...otherProps }) => ({
+    ...otherProps,
+    ...cachesStore,
+  }),
+);

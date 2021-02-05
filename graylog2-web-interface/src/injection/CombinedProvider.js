@@ -1,138 +1,56 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 class CombinedProvider {
   constructor() {
-    /* eslint-disable import/no-require, global-require */
-    this.actions = {
-      AlarmCallbackHistory: () => require('actions/alarmcallbacks/AlarmCallbackHistoryActions'),
-      AlarmCallbacks: () => require('actions/alarmcallbacks/AlarmCallbacksActions'),
-      AlertConditions: () => require('actions/alertconditions/AlertConditionsActions'),
-      AlertNotifications: () => require('actions/alertnotifications/AlertNotificationsActions'),
-      Alerts: () => require('actions/alerts/AlertsActions'),
-      Authentication: () => require('actions/authentication/AuthenticationActions'),
-      ClusterTraffic: () => require('actions/cluster/ClusterTrafficActions'),
-      CodecTypes: () => require('actions/codecs/CodecTypesActions'),
-      Configuration: () => require('actions/configurations/ConfigurationActions'),
-      ConfigurationBundles: () => require('actions/configuration-bundles/ConfigurationBundlesActions'),
-      Dashboards: () => require('actions/dashboards/DashboardsActions'),
-      Decorators: () => require('actions/decorators/DecoratorsActions'),
-      Deflector: () => require('actions/indices/DeflectorActions'),
-      Extractors: () => require('actions/extractors/ExtractorsActions'),
-      FieldQuickValues: () => require('actions/field-analyzers/FieldQuickValuesActions'),
-      GettingStarted: () => require('actions/gettingstarted/GettingStartedActions'),
-      HistogramData: () => require('actions/sources/HistogramDataActions'),
-      IndexerCluster: () => require('actions/indexers/IndexerClusterActions'),
-      IndexerOverview: () => require('actions/indexers/IndexerOverviewActions'),
-      IndexRanges: () => require('actions/indices/IndexRangesActions'),
-      IndexSets: () => require('actions/indices/IndexSetsActions'),
-      Indices: () => require('actions/indices/IndicesActions'),
-      IndicesConfiguration: () => require('actions/indices/IndicesConfigurationActions'),
-      Inputs: () => require('actions/inputs/InputsActions'),
-      InputTypes: () => require('actions/inputs/InputTypesActions'),
-      Ldap: () => require('actions/ldap/LdapActions'),
-      LdapGroups: () => require('actions/ldap/LdapGroupsActions'),
-      Loggers: () => require('actions/system/LoggersActions'),
-      LookupTableCaches: () => require('actions/lookup-tables/LookupTableCachesActions'),
-      LookupTableDataAdapters: () => require('actions/lookup-tables/LookupTableDataAdaptersActions'),
-      LookupTables: () => require('actions/lookup-tables/LookupTablesActions'),
-      MessageCounts: () => require('actions/messages/MessageCountsActions'),
-      Messages: () => require('actions/messages/MessagesActions'),
-      Metrics: () => require('actions/metrics/MetricsActions'),
-      Nodes: () => require('actions/nodes/NodesActions'),
-      Notifications: () => require('actions/notifications/NotificationsActions'),
-      Refresh: () => require('actions/tools/RefreshActions'),
-      SavedSearches: () => require('actions/search/SavedSearchesActions'),
-      ServerAvailability: () => require('actions/sessions/ServerAvailabilityActions'),
-      Session: () => require('actions/sessions/SessionActions'),
-      SingleNode: () => require('actions/nodes/SingleNodeActions'),
-      Streams: () => require('actions/streams/StreamsActions'),
-      SystemJobs: () => require('actions/systemjobs/SystemJobsActions'),
-      Widgets: () => require('actions/widgets/WidgetsActions'),
-    };
-    this.stores = {
-      AlarmCallbackHistory: () => require('stores/alarmcallbacks/AlarmCallbackHistoryStore'),
-      AlarmCallbacks: () => require('stores/alarmcallbacks/AlarmCallbacksStore'),
-      AlertConditions: () => require('stores/alertconditions/AlertConditionsStore'),
-      AlertNotifications: () => require('stores/alertnotifications/AlertNotificationsStore'),
-      Alerts: () => require('stores/alerts/AlertsStore'),
-      Authentication: () => require('stores/authentication/AuthenticationStore'),
-      ClusterOverview: () => require('stores/cluster/ClusterOverviewStore'),
-      ClusterTraffic: () => require('stores/cluster/ClusterTrafficStore'),
-      CodecTypes: () => require('stores/codecs/CodecTypesStore'),
-      ConfigurationBundles: () => require('stores/configuration-bundles/ConfigurationBundlesStore'),
-      Configurations: () => require('stores/configurations/ConfigurationsStore'),
-      CurrentUser: () => require('stores/users/CurrentUserStore'),
-      Dashboards: () => require('stores/dashboards/DashboardsStore'),
-      Decorators: () => require('stores/decorators/DecoratorsStore'),
-      Deflector: () => require('stores/indices/DeflectorStore'),
-      Extractors: () => require('stores/extractors/ExtractorsStore'),
-      FieldGraphs: () => require('stores/field-analyzers/FieldGraphsStore'),
-      FieldQuickValues: () => require('stores/field-analyzers/FieldQuickValuesStore'),
-      Fields: () => require('stores/fields/FieldsStore'),
-      FieldStatistics: () => require('stores/field-analyzers/FieldStatisticsStore'),
-      Focus: () => require('stores/tools/FocusStore'),
-      GettingStarted: () => require('stores/gettingstarted/GettingStartedStore'),
-      GlobalThroughput: () => require('stores/metrics/GlobalThroughputStore'),
-      GrokPatterns: () => require('stores/grok-patterns/GrokPatternsStore'),
-      HistogramData: () => require('stores/sources/HistogramDataStore'),
-      IndexerCluster: () => require('stores/indexers/IndexerClusterStore'),
-      IndexerFailures: () => require('stores/indexers/IndexerFailuresStore'),
-      IndexerOverview: () => require('stores/indexers/IndexerOverviewStore'),
-      IndexRanges: () => require('stores/indices/IndexRangesStore'),
-      IndexSets: () => require('stores/indices/IndexSetsStore'),
-      Indices: () => require('stores/indices/IndicesStore'),
-      IndicesConfiguration: () => require('stores/indices/IndicesConfigurationStore'),
-      Inputs: () => require('stores/inputs/InputsStore'),
-      InputStates: () => require('stores/inputs/InputStatesStore'),
-      InputStaticFields: () => require('stores/inputs/InputStaticFieldsStore'),
-      InputTypes: () => require('stores/inputs/InputTypesStore'),
-      Journal: () => require('stores/journal/JournalStore'),
-      LdapGroups: () => require('stores/ldap/LdapGroupsStore'),
-      Ldap: () => require('stores/ldap/LdapStore'),
-      Loggers: () => require('stores/system/LoggersStore'),
-      LookupTables: () => require('stores/lookup-tables/LookupTablesStore'),
-      LookupTableCaches: () => require('stores/lookup-tables/LookupTableCachesStore'),
-      LookupTableDataAdapters: () => require('stores/lookup-tables/LookupTableDataAdaptersStore'),
-      MessageCounts: () => require('stores/messages/MessageCountsStore'),
-      MessageFields: () => require('stores/messages/MessageFieldsStore'),
-      Messages: () => require('stores/messages/MessagesStore'),
-      Metrics: () => require('stores/metrics/MetricsStore'),
-      Nodes: () => require('stores/nodes/NodesStore'),
-      Notifications: () => require('stores/notifications/NotificationsStore'),
-      Outputs: () => require('stores/outputs/OutputsStore'),
-      Plugins: () => require('stores/plugins/PluginsStore'),
-      Preferences: () => require('stores/users/PreferencesStore'),
-      Refresh: () => require('stores/tools/RefreshStore'),
-      Roles: () => require('stores/users/RolesStore'),
-      SavedSearches: () => require('stores/search/SavedSearchesStore'),
-      Search: () => require('stores/search/SearchStore'),
-      ServerAvailability: () => require('stores/sessions/ServerAvailabilityStore'),
-      Session: () => require('stores/sessions/SessionStore'),
-      SingleNode: () => require('stores/nodes/SingleNodeStore'),
-      Sources: () => require('stores/sources/SourcesStore'),
-      Startpage: () => require('stores/users/StartpageStore'),
-      StreamRules: () => require('stores/streams/StreamRulesStore'),
-      Streams: () => require('stores/streams/StreamsStore'),
-      System: () => require('stores/system/SystemStore'),
-      SystemJobs: () => require('stores/systemjobs/SystemJobsStore'),
-      SystemLoadBalancer: () => require('stores/load-balancer/SystemLoadBalancerStore'),
-      SystemMessages: () => require('stores/systemmessages/SystemMessagesStore'),
-      SystemProcessing: () => require('stores/system-processing/SystemProcessingStore'),
-      SystemShutdown: () => require('stores/system-shutdown/SystemShutdownStore'),
-      Tools: () => require('stores/tools/ToolsStore'),
-      UniversalSearch: () => require('stores/search/UniversalSearchStore'),
-      Users: () => require('stores/users/UsersStore'),
-      Widgets: () => require('stores/widgets/WidgetsStore'),
-    };
-    /* eslint-enable import/no-require, global-require */
+    this.actions = {};
+    this.stores = {};
+  }
+
+  registerAction(key, func) {
+    if (this.actions[key]) {
+      throw new Error(`Unable to register actions for '${key}', already registered: ${this.actions[key]}`);
+    }
+
+    this.actions[key] = func;
+  }
+
+  registerStore(key, func) {
+    if (this.stores[key]) {
+      throw new Error(`Unable to register store for '${key}', already registered: ${this.stores[key]}`);
+    }
+
+    this.stores[key] = func;
   }
 
   get(name) {
     const result = {};
+
     if (this.stores[name]) {
-      result[`${name}Store`] = this.stores[name]();
+      const _result = this.stores[name]();
+
+      result[`${name}Store`] = _result && _result.default ? _result.default : _result;
     }
+
     if (this.actions[name]) {
-      result[`${name}Actions`] = this.actions[name]();
+      const _result = this.actions[name]();
+
+      result[`${name}Actions`] = _result && _result.default ? _result.default : _result;
     }
+
     return result;
   }
 }

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
@@ -77,6 +77,7 @@ public class V20161125161400_AlertReceiversMigrationTest {
     private DBCollection dbCollection;
 
     @Before
+    @SuppressWarnings("deprecation")
     public void setUp() throws Exception {
         final MongoConnection mongoConnection = mock(MongoConnection.class);
         final DB database = mock(DB.class);
@@ -167,8 +168,8 @@ public class V20161125161400_AlertReceiversMigrationTest {
         final ArgumentCaptor<BasicDBObject> queryCaptor = ArgumentCaptor.forClass(BasicDBObject.class);
         final ArgumentCaptor<BasicDBObject> updateCaptor = ArgumentCaptor.forClass(BasicDBObject.class);
         verify(this.dbCollection, times(1)).update(queryCaptor.capture(), updateCaptor.capture());
-        assertThat(queryCaptor.getValue().toJson()).isEqualTo("{ \"_id\" : { \"$oid\" : \"" + matchingStreamId + "\" } }");
-        assertThat(updateCaptor.getValue().toJson()).isEqualTo("{ \"$unset\" : { \"" + StreamImpl.FIELD_ALERT_RECEIVERS + "\" : \"\" } }");
+        assertThat(queryCaptor.getValue().toJson()).isEqualTo("{\"_id\": {\"$oid\": \"" + matchingStreamId + "\"}}");
+        assertThat(updateCaptor.getValue().toJson()).isEqualTo("{\"$unset\": {\"" + StreamImpl.FIELD_ALERT_RECEIVERS + "\": \"\"}}");
 
         verifyMigrationCompletedWasPosted(ImmutableMap.of(
             matchingStreamId, Optional.of(alarmCallbackId)
@@ -285,10 +286,10 @@ public class V20161125161400_AlertReceiversMigrationTest {
         final List<BasicDBObject> queries = queryCaptor.getAllValues();
         for (BasicDBObject query : queries) {
             final String streamId = (queries.indexOf(query) == 0 ? matchingStreamId1 : matchingStreamId2);
-            assertThat(query.toJson()).isEqualTo("{ \"_id\" : { \"$oid\" : \"" + streamId + "\" } }");
+            assertThat(query.toJson()).isEqualTo("{\"_id\": {\"$oid\": \"" + streamId + "\"}}");
         }
         updateCaptor.getAllValues()
-                .forEach(update -> assertThat(update.toJson()).isEqualTo("{ \"$unset\" : { \"" + StreamImpl.FIELD_ALERT_RECEIVERS + "\" : \"\" } }"));
+                .forEach(update -> assertThat(update.toJson()).isEqualTo("{\"$unset\": {\"" + StreamImpl.FIELD_ALERT_RECEIVERS + "\": \"\"}}"));
 
         verifyMigrationCompletedWasPosted(ImmutableMap.of(
             matchingStreamId1, Optional.of(alarmCallbackId1),

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.streams.alerts;
 
@@ -22,6 +22,7 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
@@ -84,7 +85,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 
 @RequiresAuthentication
-@Api(value = "Stream/Alerts", description = "Manage stream alerts for a given stream")
+@Api(value = "Stream/Alerts", description = "Manage stream legacy alerts for a given stream")
 @Path("/streams/{streamId}/alerts")
 public class StreamAlertResource extends RestResource {
     private static final int REST_CHECK_CACHE_SECONDS = 30;
@@ -149,13 +150,23 @@ public class StreamAlertResource extends RestResource {
                                           @ApiParam(name = "skip", value = "The number of elements to skip (offset).", required = true)
                                           @QueryParam("skip") @DefaultValue("0") int skip,
                                           @ApiParam(name = "limit", value = "The maximum number of elements to return.", required = true)
-                                          @QueryParam("limit") @DefaultValue("300") int limit) throws NotFoundException {
+                                          @QueryParam("limit") @DefaultValue("300") int limit,
+                                          @ApiParam(name = "state", value = "Alert state (resolved/unresolved)")
+                                          @QueryParam("state") String state) throws NotFoundException {
         checkPermission(RestPermissions.STREAMS_READ, streamId);
 
-        final Stream stream = streamService.load(streamId);
-        final List<AlertSummary> conditions = toSummaryList(alertService.listForStreamId(stream.getId(), skip, limit));
+        Alert.AlertState alertState;
+        try {
+            alertState = Alert.AlertState.fromString(state);
+        } catch (IllegalArgumentException e) {
+            alertState = Alert.AlertState.ANY;
+        }
 
-        return AlertListSummary.create(alertService.totalCountForStream(streamId), conditions);
+        final Stream stream = streamService.load(streamId);
+        final List<String> streamIdList = Lists.newArrayList(stream.getId());
+        final List<AlertSummary> conditions = toSummaryList(alertService.listForStreamIds(streamIdList, alertState, skip, limit));
+
+        return AlertListSummary.create(alertService.totalCountForStreams(streamIdList, alertState), conditions);
     }
 
     @GET

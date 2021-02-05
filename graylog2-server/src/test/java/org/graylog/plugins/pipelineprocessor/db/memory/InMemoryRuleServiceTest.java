@@ -1,30 +1,32 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.db.memory;
 
 import com.google.common.collect.ImmutableList;
 import org.graylog.plugins.pipelineprocessor.db.RuleDao;
 import org.graylog2.database.NotFoundException;
+import org.graylog2.events.ClusterEventBus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 public class InMemoryRuleServiceTest {
@@ -32,7 +34,7 @@ public class InMemoryRuleServiceTest {
 
     @Before
     public void setup() {
-        service = new InMemoryRuleService();
+        service = new InMemoryRuleService(new ClusterEventBus());
     }
 
     @Test
@@ -71,6 +73,21 @@ public class InMemoryRuleServiceTest {
             fail("Deleted rules should not be found anymore");
         } catch (NotFoundException ignored) {
         }
+    }
+
+    @Test
+    public void loadByName() throws NotFoundException {
+        RuleDao rule = RuleDao.create(null, "test", "description", "rule \"test\" when true then end", null, null);
+        final RuleDao savedRule = service.save(rule);
+        final RuleDao loadedRule = service.loadByName(savedRule.title());
+        assertThat(loadedRule).isEqualTo(savedRule);
+    }
+
+    @Test
+    public void loadByNameNotFound() {
+        assertThatThrownBy(() -> service.loadByName("Foobar"))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("No rule with name Foobar");
     }
 
     @Test

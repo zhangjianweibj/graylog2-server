@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.processors;
 
@@ -21,7 +21,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Maps;
 import com.google.common.eventbus.EventBus;
 import org.graylog.plugins.pipelineprocessor.ast.Pipeline;
 import org.graylog.plugins.pipelineprocessor.ast.Rule;
@@ -32,6 +31,8 @@ import org.graylog.plugins.pipelineprocessor.db.PipelineDao;
 import org.graylog.plugins.pipelineprocessor.db.PipelineService;
 import org.graylog.plugins.pipelineprocessor.db.PipelineStreamConnectionsService;
 import org.graylog.plugins.pipelineprocessor.db.RuleDao;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigDto;
+import org.graylog.plugins.pipelineprocessor.db.RuleMetricsConfigService;
 import org.graylog.plugins.pipelineprocessor.db.RuleService;
 import org.graylog.plugins.pipelineprocessor.db.memory.InMemoryPipelineService;
 import org.graylog.plugins.pipelineprocessor.db.memory.InMemoryPipelineStreamConnectionsService;
@@ -45,6 +46,7 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.SetField;
 import org.graylog.plugins.pipelineprocessor.parser.FunctionRegistry;
 import org.graylog.plugins.pipelineprocessor.parser.PipelineRuleParser;
 import org.graylog.plugins.pipelineprocessor.rest.PipelineConnections;
+import org.graylog2.events.ClusterEventBus;
 import org.graylog2.plugin.Message;
 import org.graylog2.plugin.Messages;
 import org.graylog2.plugin.Tools;
@@ -248,6 +250,8 @@ public class PipelineInterpreterTest {
 
     @SuppressForbidden("Allow using default thread factory")
     private PipelineInterpreter createPipelineInterpreter(RuleService ruleService, PipelineService pipelineService, Map<String, Function<?>> functions) {
+        final RuleMetricsConfigService ruleMetricsConfigService = mock(RuleMetricsConfigService.class);
+        when(ruleMetricsConfigService.get()).thenReturn(RuleMetricsConfigDto.createDefault());
         final PipelineStreamConnectionsService pipelineStreamConnectionsService = mock(MongoDbPipelineStreamConnectionsService.class);
         final PipelineConnections pipelineConnections = PipelineConnections.create("p1", DEFAULT_STREAM_ID, Collections.singleton("p1"));
         when(pipelineStreamConnectionsService.loadAll()).thenReturn(Collections.singleton(pipelineConnections));
@@ -259,11 +263,12 @@ public class PipelineInterpreterTest {
                 pipelineService,
                 pipelineStreamConnectionsService,
                 parser,
+                ruleMetricsConfigService,
                 new MetricRegistry(),
                 functionRegistry,
                 Executors.newScheduledThreadPool(1),
                 mock(EventBus.class),
-                (currentPipelines, streamPipelineConnections) -> new PipelineInterpreter.State(currentPipelines, streamPipelineConnections, new MetricRegistry(), 1, true),
+                (currentPipelines, streamPipelineConnections, ruleMetricsConfig) -> new PipelineInterpreter.State(currentPipelines, streamPipelineConnections, ruleMetricsConfig, new MetricRegistry(), 1, true),
                 false);
         return new PipelineInterpreter(
                 mock(Journal.class),
@@ -275,7 +280,10 @@ public class PipelineInterpreterTest {
     @Test
     @SuppressForbidden("Allow using default thread factory")
     public void testMetrics() {
-        final RuleService ruleService = new InMemoryRuleService();
+        final RuleMetricsConfigService ruleMetricsConfigService = mock(RuleMetricsConfigService.class);
+        when(ruleMetricsConfigService.get()).thenReturn(RuleMetricsConfigDto.createDefault());
+        final ClusterEventBus clusterEventBus = new ClusterEventBus("cluster-event-bus", Executors.newSingleThreadExecutor());
+        final RuleService ruleService = new InMemoryRuleService(clusterEventBus);
         ruleService.save(RuleDao.create("abc",
                 "title",
                 "description",
@@ -287,7 +295,7 @@ public class PipelineInterpreterTest {
                 null)
         );
 
-        final PipelineService pipelineService = new InMemoryPipelineService();
+        final PipelineService pipelineService = new InMemoryPipelineService(new ClusterEventBus());
         pipelineService.save(PipelineDao.create("cde", "title", "description",
                 "pipeline \"pipeline\"\n" +
                         "stage 0 match all\n" +
@@ -299,7 +307,7 @@ public class PipelineInterpreterTest {
                 null)
         );
 
-        final PipelineStreamConnectionsService pipelineStreamConnectionsService = new InMemoryPipelineStreamConnectionsService();
+        final PipelineStreamConnectionsService pipelineStreamConnectionsService = new InMemoryPipelineStreamConnectionsService(clusterEventBus);
         pipelineStreamConnectionsService.save(PipelineConnections.create(null,
                 DEFAULT_STREAM_ID,
                 Collections.singleton("cde")));
@@ -312,11 +320,12 @@ public class PipelineInterpreterTest {
                 pipelineService,
                 pipelineStreamConnectionsService,
                 parser,
+                ruleMetricsConfigService,
                 metricRegistry,
                 functionRegistry,
                 Executors.newScheduledThreadPool(1),
                 mock(EventBus.class),
-                (currentPipelines, streamPipelineConnections) -> new PipelineInterpreter.State(currentPipelines, streamPipelineConnections, new MetricRegistry(), 1, true),
+                (currentPipelines, streamPipelineConnections, ruleMetricsConfig) -> new PipelineInterpreter.State(currentPipelines, streamPipelineConnections, ruleMetricsConfig, new MetricRegistry(), 1, true),
                 false);
         final PipelineInterpreter interpreter = new PipelineInterpreter(
                 mock(Journal.class),

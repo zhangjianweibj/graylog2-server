@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.map.geoip;
 
@@ -107,7 +107,7 @@ public class GeoIpResolverEngineTest {
         final boolean filtered = resolver.filter(message);
 
         assertFalse("Message should not be filtered out", filtered);
-        assertEquals("Filter should not add new message fields", message.getFields().size(), messageFields.size());
+        assertEquals("Filter should not add new message fields", messageFields.size(), message.getFields().size());
     }
 
     private void assertFieldNotResolved(Message message, String fieldName, String errorMessage) {
@@ -132,14 +132,14 @@ public class GeoIpResolverEngineTest {
         messageFields.put("source", "192.168.0.1");
         messageFields.put("message", "Hello from 1.2.3.4");
         messageFields.put("extracted_ip", "1.2.3.4");
-        messageFields.put("gl2_remote_ip", "1.2.3.4");
+        messageFields.put(Message.FIELD_GL2_REMOTE_IP, "1.2.3.4");
         messageFields.put("ipv6", "2001:4860:4860::8888");
 
         final Message message = new Message(messageFields);
         final boolean filtered = resolver.filter(message);
 
         assertFalse("Message should not be filtered out", filtered);
-        assertEquals("Should have looked up three IPs", metricRegistry.timer(name(GeoIpResolverEngine.class, "resolveTime")).getCount(), 3);
+        assertEquals("Should have looked up three IPs", 3, metricRegistry.timer(name(GeoIpResolverEngine.class, "resolveTime")).getCount());
         assertFieldNotResolved(message, "source", "Should not have resolved private IP");
         assertFieldNotResolved(message, "message", "Should have resolved public IP");
         assertFieldNotResolved(message, "gl2_remote_ip", "Should not have resolved text with an IP");

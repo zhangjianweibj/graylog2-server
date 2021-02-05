@@ -1,14 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Button, Col, Row } from 'react-bootstrap';
 
+import { Col, Row, Button } from 'components/graylog';
+import { Icon } from 'components/common';
 import { Input } from 'components/bootstrap';
 import StoreProvider from 'injection/StoreProvider';
-const ToolsStore = StoreProvider.getStore('Tools');
-
 import ExtractorUtils from 'util/ExtractorUtils';
 import FormUtils from 'util/FormsUtils';
+
+const ToolsStore = StoreProvider.getStore('Tools');
 
 const JSONExtractorConfiguration = createReactClass({
   displayName: 'JSONExtractorConfiguration',
@@ -31,7 +48,7 @@ const JSONExtractorConfiguration = createReactClass({
     this.props.onChange(this.state.configuration);
   },
 
-  componentWillReceiveProps(nextProps) {
+  UNSAFE_componentWillReceiveProps(nextProps) {
     this.setState({ configuration: this._getEffectiveConfiguration(nextProps.configuration) });
   },
 
@@ -52,6 +69,7 @@ const JSONExtractorConfiguration = createReactClass({
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
       const newConfig = this.state.configuration;
+
       newConfig[key] = FormUtils.getValueFromInput(event.target);
       this.props.onChange(newConfig);
     };
@@ -60,13 +78,14 @@ const JSONExtractorConfiguration = createReactClass({
   _onTryClick() {
     this.setState({ trying: true });
 
-    const configuration = this.state.configuration;
+    const { configuration } = this.state;
     const promise = ToolsStore.testJSON(configuration.flatten, configuration.list_separator,
       configuration.key_separator, configuration.kv_separator, configuration.replace_key_whitespace,
       configuration.key_whitespace_replacement, configuration.key_prefix, this.props.exampleMessage);
 
     promise.then((result) => {
       const matches = [];
+
       for (const match in result.matches) {
         if (result.matches.hasOwnProperty(match)) {
           matches.push(<dt key={`${match}-name`}>{match}</dt>);
@@ -75,6 +94,7 @@ const JSONExtractorConfiguration = createReactClass({
       }
 
       const preview = (matches.length === 0 ? '' : <dl>{matches}</dl>);
+
       this.props.onExtractorPreviewLoad(preview);
     });
 
@@ -157,7 +177,7 @@ const JSONExtractorConfiguration = createReactClass({
         <Row>
           <Col mdOffset={2} md={10}>
             <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+              {this.state.trying ? <Icon name="spinner" spin /> : 'Try'}
             </Button>
           </Col>
         </Row>

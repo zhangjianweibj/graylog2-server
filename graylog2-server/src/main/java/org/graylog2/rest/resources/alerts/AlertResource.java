@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.rest.resources.alerts;
 
@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 import static org.graylog2.shared.security.RestPermissions.STREAMS_READ;
 
 @RequiresAuthentication
-@Api(value = "Alerts", description = "Manage stream alerts for all streams")
+@Api(value = "Alerts", description = "Manage stream legacy alerts for all streams")
 @Path("/streams/alerts")
 @Produces(MediaType.APPLICATION_JSON)
 public class AlertResource extends RestResource {
@@ -93,7 +93,7 @@ public class AlertResource extends RestResource {
                                           @ApiParam(name = "limit", value = "The maximum number of elements to return.", required = true)
                                           @QueryParam("limit") @DefaultValue("300") int limit,
                                           @ApiParam(name = "state", value = "Alert state (resolved/unresolved)", required = false)
-                                          @QueryParam("state") String state) throws NotFoundException {
+                                          @QueryParam("state") String state) {
         final List<String> allowedStreamIds = getAllowedStreamIds();
 
         AlertState alertState;

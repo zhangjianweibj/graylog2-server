@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.rest.resources.system;
 
@@ -31,8 +31,10 @@ import org.graylog2.plugin.cluster.ClusterId;
 import org.graylog2.rest.models.system.responses.LocalesResponse;
 import org.graylog2.rest.models.system.responses.SystemJVMResponse;
 import org.graylog2.rest.models.system.responses.SystemOverviewResponse;
+import org.graylog2.rest.models.system.responses.SystemProcessBufferDumpResponse;
 import org.graylog2.rest.models.system.responses.SystemThreadDumpResponse;
 import org.graylog2.shared.ServerVersion;
+import org.graylog2.shared.buffers.ProcessBuffer;
 import org.graylog2.shared.rest.resources.RestResource;
 import org.graylog2.shared.security.RestPermissions;
 
@@ -55,11 +57,13 @@ import java.util.Map;
 public class SystemResource extends RestResource {
     private final ServerStatus serverStatus;
     private final ClusterId clusterId;
+    private final ProcessBuffer processBuffer;
 
     @Inject
-    public SystemResource(ServerStatus serverStatus, ClusterConfigService clusterConfigService) {
+    public SystemResource(ServerStatus serverStatus, ClusterConfigService clusterConfigService, ProcessBuffer processBuffer) {
         this.serverStatus = serverStatus;
         this.clusterId = clusterConfigService.getOrDefault(ClusterId.class, ClusterId.create(UUID.nilUUID().toString()));
+        this.processBuffer = processBuffer;
     }
 
     @GET
@@ -114,6 +118,15 @@ public class SystemResource extends RestResource {
 
         threadDump.dump(output);
         return SystemThreadDumpResponse.create(new String(output.toByteArray(), StandardCharsets.UTF_8));
+    }
+
+    @GET
+    @Path("/processbufferdump")
+    @Timed
+    @ApiOperation(value = "Get a process buffer dump")
+    public SystemProcessBufferDumpResponse processBufferDump() {
+        checkPermission(RestPermissions.PROCESSBUFFER_DUMP, serverStatus.getNodeId().toString());
+       return SystemProcessBufferDumpResponse.create(processBuffer.getDump());
     }
 
     @GET

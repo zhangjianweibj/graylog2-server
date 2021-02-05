@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
@@ -29,10 +29,8 @@ import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.graylog2.plugin.configuration.ConfigurationRequest;
 import org.graylog2.plugin.database.Persisted;
 import org.graylog2.plugin.database.ValidationException;
-import org.graylog2.plugin.database.users.User;
 import org.graylog2.plugin.streams.Stream;
 import org.graylog2.rest.models.alarmcallbacks.requests.CreateAlarmCallbackRequest;
-import org.graylog2.shared.users.UserService;
 import org.graylog2.streams.StreamService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,19 +49,13 @@ public class V20161125142400_EmailAlarmCallbackMigration extends Migration {
     private final StreamService streamService;
     private final AlarmCallbackConfigurationService alarmCallbackService;
     private final EmailAlarmCallback emailAlarmCallback;
-    private final User localAdminUser;
 
     @Inject
-    public V20161125142400_EmailAlarmCallbackMigration(ClusterConfigService clusterConfigService,
-                                                 StreamService streamService,
-                                                 AlarmCallbackConfigurationService alarmCallbackService,
-                                                 EmailAlarmCallback emailAlarmCallback,
-                                                 UserService userService) {
+    public V20161125142400_EmailAlarmCallbackMigration(ClusterConfigService clusterConfigService, StreamService streamService, AlarmCallbackConfigurationService alarmCallbackService, EmailAlarmCallback emailAlarmCallback) {
         this.clusterConfigService = clusterConfigService;
         this.streamService = streamService;
         this.alarmCallbackService = alarmCallbackService;
         this.emailAlarmCallback = emailAlarmCallback;
-        this.localAdminUser = userService.getAdminUser();
     }
 
     @Override
@@ -125,7 +117,7 @@ public class V20161125142400_EmailAlarmCallbackMigration extends Migration {
                         "Email Alert Notification",
                         defaultConfig
                 ),
-                localAdminUser.getId()
+                "local:admin"
         );
         try {
             final String callbackId = this.alarmCallbackService.save(alarmCallbackConfiguration);

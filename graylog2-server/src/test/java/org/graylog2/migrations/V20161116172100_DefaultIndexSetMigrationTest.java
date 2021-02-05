@@ -1,29 +1,27 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.migrations;
 
 import org.graylog2.configuration.ElasticsearchConfiguration;
-import org.graylog2.events.ClusterEventBus;
 import org.graylog2.indexer.IndexSet;
 import org.graylog2.indexer.indexset.DefaultIndexSetConfig;
 import org.graylog2.indexer.indexset.DefaultIndexSetCreated;
 import org.graylog2.indexer.indexset.IndexSetConfig;
 import org.graylog2.indexer.indexset.IndexSetService;
-import org.graylog2.indexer.indexset.events.IndexSetCreatedEvent;
 import org.graylog2.indexer.management.IndexManagementConfig;
 import org.graylog2.plugin.cluster.ClusterConfigService;
 import org.graylog2.plugin.indexer.retention.RetentionStrategy;
@@ -60,8 +58,6 @@ public class V20161116172100_DefaultIndexSetMigrationTest {
     private IndexSetService indexSetService;
     @Mock
     private ClusterConfigService clusterConfigService;
-    @Mock
-    private ClusterEventBus clusterEventBus;
 
     private final ElasticsearchConfiguration elasticsearchConfiguration = new ElasticsearchConfiguration();
     private RotationStrategy rotationStrategy = new StubRotationStrategy();
@@ -76,11 +72,11 @@ public class V20161116172100_DefaultIndexSetMigrationTest {
                 Collections.singletonMap("test", () -> rotationStrategy),
                 Collections.singletonMap("test", () -> retentionStrategy),
                 indexSetService,
-                clusterConfigService,
-                clusterEventBus);
+                clusterConfigService);
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void upgradeCreatesDefaultIndexSet() throws Exception {
         final StubRotationStrategyConfig rotationStrategyConfig = new StubRotationStrategyConfig();
         final StubRetentionStrategyConfig retentionStrategyConfig = new StubRetentionStrategyConfig();
@@ -110,7 +106,6 @@ public class V20161116172100_DefaultIndexSetMigrationTest {
         verify(indexSetService).save(indexSetConfigCaptor.capture());
         verify(clusterConfigService).write(DefaultIndexSetConfig.create("id"));
         verify(clusterConfigService).write(DefaultIndexSetCreated.create());
-        verify(clusterEventBus).post(IndexSetCreatedEvent.create(savedIndexSetConfig));
 
         final IndexSetConfig capturedIndexSetConfig = indexSetConfigCaptor.getValue();
         assertThat(capturedIndexSetConfig.id()).isNull();
@@ -165,7 +160,6 @@ public class V20161116172100_DefaultIndexSetMigrationTest {
 
         verify(clusterConfigService).get(DefaultIndexSetCreated.class);
         verifyNoMoreInteractions(clusterConfigService);
-        verifyZeroInteractions(clusterEventBus);
         verifyZeroInteractions(indexSetService);
     }
 

@@ -1,10 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import moment from 'moment-timezone';
+
 import AppConfig from 'util/AppConfig';
 import StoreProvider from 'injection/StoreProvider';
+
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 
 let currentUser = CurrentUserStore.get();
-CurrentUserStore.listen(state => currentUser = state.currentUser);
+
+CurrentUserStore.listen((state) => { currentUser = state.currentUser; });
 
 class DateTime {
   static get Formats() {
@@ -33,6 +52,7 @@ class DateTime {
     if (dateTimeString instanceof String) {
       return dateTimeString.trim();
     }
+
     return dateTimeString;
   }
 
@@ -52,6 +72,7 @@ class DateTime {
   // Tries to parse the given string using `.getAcceptedFormats`
   static parseFromString(dateTimeString) {
     const parsedDateTime = moment.tz(DateTime._cleanDateTimeString(dateTimeString), DateTime.getAcceptedFormats(), true, DateTime.getUserTimezone());
+
     if (!parsedDateTime.isValid()) {
       throw new Error(`Date time ${dateTimeString} is not valid`);
     }
@@ -59,12 +80,18 @@ class DateTime {
     return new DateTime(parsedDateTime);
   }
 
+  static isValidDateString(dateTimeString) {
+    const parsedDateTime = moment.tz(DateTime._cleanDateTimeString(dateTimeString), DateTime.getAcceptedFormats(), true, DateTime.getUserTimezone());
+
+    return parsedDateTime.isValid();
+  }
+
   static getUserTimezone() {
     if (currentUser && currentUser.timezone) {
       return currentUser.timezone;
-    } else {
-      return this.getBrowserTimezone() || AppConfig.rootTimeZone() || 'UTC';
     }
+
+    return this.getBrowserTimezone() || AppConfig.rootTimeZone() || 'UTC';
   }
 
   static getBrowserTimezone() {
@@ -74,8 +101,10 @@ class DateTime {
   constructor(dateTime) {
     if (!dateTime) {
       this.dateTime = DateTime.now();
+
       return;
     }
+
     // Always use user's local time
     this.dateTime = moment.tz(dateTime, DateTime.getUserTimezone());
   }
@@ -87,13 +116,16 @@ class DateTime {
   // Converts the DateTime to the user's browser local time
   toBrowserLocalTime() {
     const localOffset = (new Date()).getTimezoneOffset();
+
     this.dateTime.utcOffset(-localOffset);
+
     return this;
   }
 
   // Changes the timezone of the DateTime
   toTimeZone(tz) {
     this.dateTime.tz(tz);
+
     return this;
   }
 
@@ -118,6 +150,7 @@ class DateTime {
 
   toString(format) {
     let effectiveFormat = format;
+
     if (format === undefined || format === null) {
       if (this.dateTime.milliseconds() === 0) {
         effectiveFormat = DateTime.Formats.DATETIME;
@@ -125,6 +158,7 @@ class DateTime {
         effectiveFormat = DateTime.Formats.TIMESTAMP;
       }
     }
+
     return this.dateTime.format(effectiveFormat);
   }
 }

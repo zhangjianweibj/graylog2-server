@@ -1,11 +1,26 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Row, Col } from 'react-bootstrap';
 
+import { Row, Col } from 'components/graylog';
 import { Input } from 'components/bootstrap';
 import { LocaleSelect, TimezoneSelect } from 'components/common';
 import DocumentationLink from 'components/support/DocumentationLink';
-
 import DocsHelper from 'util/DocsHelper';
 import FormUtils from 'util/FormsUtils';
 
@@ -26,6 +41,7 @@ class DateConverterConfiguration extends React.Component {
 
   _toggleConverter = (event) => {
     let converter;
+
     if (FormUtils.getValueFromInput(event.target) === true) {
       converter = this._getConverterObject();
     }
@@ -36,6 +52,7 @@ class DateConverterConfiguration extends React.Component {
   _onChange = (key) => {
     return (data) => {
       const newConfig = this.props.configuration;
+
       // data can be an event or a value, we need to check its type :sick:
       newConfig[key] = typeof data === 'object' ? FormUtils.getValueFromInput(data.target) : data;
       this.props.onChange(this.props.type, this._getConverterObject(newConfig));
@@ -45,29 +62,26 @@ class DateConverterConfiguration extends React.Component {
   render() {
     const dateFormatHelpMessage = (
       <span>
-        String format the date uses. Read more in the <DocumentationLink
-        page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
+        String format the date uses. Read more in the <DocumentationLink page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
       </span>
     );
 
     const timezoneHelpMessage = (
       <span>
-        Time zone to apply to date. Read more in the <DocumentationLink
-        page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
+        Time zone to apply to date. Read more in the <DocumentationLink page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
       </span>
     );
 
     const localeHelpMessage = (
       <span>
-        Locale to use when parsing the date. Read more in the <DocumentationLink
-        page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
+        Locale to use when parsing the date. Read more in the <DocumentationLink page={DocsHelper.PAGES.PAGE_STANDARD_DATE_CONVERTER} text="documentation" />.
       </span>
     );
 
     return (
       <div className="xtrc-converter">
         <Input type="checkbox"
-               ref="converterEnabled"
+               ref={(converterEnabled) => { this.converterEnabled = converterEnabled; }}
                id={`enable-${this.props.type}-converter`}
                label="Convert to date type"
                wrapperClassName="col-md-offset-2 col-md-10"
@@ -84,7 +98,7 @@ class DateConverterConfiguration extends React.Component {
                      wrapperClassName="col-md-9"
                      placeholder="yyyy-MM-dd HH:mm:ss.SSS"
                      onChange={this._onChange('date_format')}
-                     required={this.refs.converterEnabled && this.refs.converterEnabled.getChecked()}
+                     required={this.converterEnabled && this.converterEnabled.getChecked()}
                      help={dateFormatHelpMessage} />
 
               <Input label="Time Zone"
@@ -92,8 +106,7 @@ class DateConverterConfiguration extends React.Component {
                      labelClassName="col-sm-3"
                      wrapperClassName="col-sm-9"
                      help={timezoneHelpMessage}>
-                <TimezoneSelect ref="timezone"
-                                id={`${this.props.type}_converter_timezone`}
+                <TimezoneSelect id={`${this.props.type}_converter_timezone`}
                                 className="timezone-select"
                                 value={this.props.configuration.time_zone}
                                 onChange={this._onChange('time_zone')} />
@@ -103,8 +116,7 @@ class DateConverterConfiguration extends React.Component {
                      labelClassName="col-sm-3"
                      wrapperClassName="col-sm-9"
                      help={localeHelpMessage}>
-                <LocaleSelect ref="locale"
-                              id={`${this.props.type}_converter_locale`}
+                <LocaleSelect id={`${this.props.type}_converter_locale`}
                               className="locale-select"
                               value={this.props.configuration.locale}
                               onChange={this._onChange('locale')} />

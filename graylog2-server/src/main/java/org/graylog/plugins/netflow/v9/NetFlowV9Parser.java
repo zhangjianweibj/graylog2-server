@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.netflow.v9;
 
@@ -50,7 +50,7 @@ public class NetFlowV9Parser {
 
         final List<NetFlowV9Template> allTemplates = new ArrayList<>();
         NetFlowV9OptionTemplate optTemplate = optionTemplate;
-        List<NetFlowV9BaseRecord> records = Collections.emptyList();
+        List<NetFlowV9BaseRecord> records = new ArrayList<>();
         while (bb.isReadable()) {
             bb.markReaderIndex();
             int flowSetId = bb.readUnsignedShort();
@@ -67,7 +67,7 @@ public class NetFlowV9Parser {
                 if (cache.isEmpty() && optTemplate == null) {
                     throw new EmptyTemplateException("Unable to parse NetFlow 9 records without template. Discarding packet.");
                 }
-                records = parseRecords(bb, cache, optionTemplate);
+                records.addAll(parseRecords(bb, cache, optionTemplate));
             }
         }
 
@@ -236,6 +236,9 @@ public class NetFlowV9Parser {
             int optType = bb.readUnsignedShort();
             int optLength = bb.readUnsignedShort();
             NetFlowV9FieldType t = typeRegistry.get(optType);
+            if (t == null) {
+                t = NetFlowV9FieldType.create(optType, NetFlowV9FieldType.ValueType.byLength(optLength), "option_" + optType);
+            }
             optionDefs.add(NetFlowV9FieldDef.create(t, optLength));
         }
 
@@ -341,6 +344,10 @@ public class NetFlowV9Parser {
                 records.add(NetFlowV9OptionRecord.create(fields.build(), scopes.build()));
             } else {
                 records.add(NetFlowV9Record.create(fields.build()));
+            }
+            // This flowset cannot contain another record, treat as padding
+            if (end - bb.readerIndex() < unitSize) {
+                break;
             }
         }
 

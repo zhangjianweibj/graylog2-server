@@ -1,15 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Row, Col, Button } from 'react-bootstrap';
 
+import { Row, Col, Button } from 'components/graylog';
+import { Icon } from 'components/common';
 import { Input } from 'components/bootstrap';
 import DocumentationLink from 'components/support/DocumentationLink';
 import DocsHelper from 'util/DocsHelper';
-
 import UserNotification from 'util/UserNotification';
 import FormUtils from 'util/FormsUtils';
-
 import StoreProvider from 'injection/StoreProvider';
+
 const ToolsStore = StoreProvider.getStore('Tools');
 
 class RegexExtractorConfiguration extends React.Component {
@@ -28,6 +44,7 @@ class RegexExtractorConfiguration extends React.Component {
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
       const newConfig = this.props.configuration;
+
       newConfig[key] = FormUtils.getValueFromInput(event.target);
       this.props.onChange(newConfig);
     };
@@ -37,18 +54,22 @@ class RegexExtractorConfiguration extends React.Component {
     this.setState({ trying: true });
 
     const promise = ToolsStore.testRegex(this.props.configuration.regex_value, this.props.exampleMessage);
+
     promise.then((result) => {
       if (!result.matched) {
         UserNotification.warning('Regular expression did not match.');
+
         return;
       }
 
       if (!result.match) {
         UserNotification.warning('Regular expression does not contain any matcher group to extract.');
+
         return;
       }
 
       const preview = (result.match.match ? <samp>{result.match.match}</samp> : '');
+
       this.props.onExtractorPreviewLoad(preview);
     });
 
@@ -76,7 +97,9 @@ class RegexExtractorConfiguration extends React.Component {
                help={helpMessage}>
           <Row className="row-sm">
             <Col md={11}>
-              <input type="text" id="regex_value" className="form-control"
+              <input type="text"
+                     id="regex_value"
+                     className="form-control"
                      defaultValue={this.props.configuration.regex_value}
                      placeholder="^.*string(.+)$"
                      onChange={this._onChange('regex_value')}
@@ -84,7 +107,7 @@ class RegexExtractorConfiguration extends React.Component {
             </Col>
             <Col md={1} className="text-right">
               <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-                {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+                {this.state.trying ? <Icon name="spinner" spin /> : 'Try'}
               </Button>
             </Col>
           </Row>

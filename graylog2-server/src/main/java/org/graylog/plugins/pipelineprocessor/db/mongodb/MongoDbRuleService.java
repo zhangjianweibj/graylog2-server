@@ -1,30 +1,31 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.db.mongodb;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableSet;
 import com.mongodb.BasicDBObject;
 import com.mongodb.MongoException;
 import org.graylog.plugins.pipelineprocessor.db.RuleDao;
 import org.graylog.plugins.pipelineprocessor.db.RuleService;
+import org.graylog.plugins.pipelineprocessor.events.RulesChangedEvent;
 import org.graylog2.bindings.providers.MongoJackObjectMapperProvider;
 import org.graylog2.database.MongoConnection;
 import org.graylog2.database.NotFoundException;
+import org.graylog2.events.ClusterEventBus;
 import org.mongojack.DBCursor;
 import org.mongojack.DBQuery;
 import org.mongojack.DBSort;
@@ -46,21 +47,29 @@ public class MongoDbRuleService implements RuleService {
     private static final String COLLECTION = "pipeline_processor_rules";
 
     private final JacksonDBCollection<RuleDao, String> dbCollection;
+    private final ClusterEventBus clusterBus;
 
     @Inject
-    public MongoDbRuleService(MongoConnection mongoConnection, MongoJackObjectMapperProvider mapper) {
-        dbCollection = JacksonDBCollection.wrap(
+    public MongoDbRuleService(MongoConnection mongoConnection,
+                              MongoJackObjectMapperProvider mapper,
+                              ClusterEventBus clusterBus) {
+        this.dbCollection = JacksonDBCollection.wrap(
                 mongoConnection.getDatabase().getCollection(COLLECTION),
                 RuleDao.class,
                 String.class,
                 mapper.get());
+        this.clusterBus = clusterBus;
         dbCollection.createIndex(DBSort.asc("title"), new BasicDBObject("unique", true));
     }
 
     @Override
     public RuleDao save(RuleDao rule) {
         final WriteResult<RuleDao, String> save = dbCollection.save(rule);
-        return save.getSavedObject();
+        final RuleDao savedRule = save.getSavedObject();
+
+        clusterBus.post(RulesChangedEvent.updatedRuleId(savedRule.id()));
+
+        return savedRule;
     }
 
     @Override
@@ -73,10 +82,19 @@ public class MongoDbRuleService implements RuleService {
     }
 
     @Override
+    public RuleDao loadByName(String name) throws NotFoundException {
+        final DBQuery.Query query = DBQuery.is("title", name);
+        final RuleDao rule = dbCollection.findOne(query);
+        if (rule == null) {
+            throw new NotFoundException("No rule with name " + name);
+        }
+        return rule;
+    }
+
+    @Override
     public Collection<RuleDao> loadAll() {
-        try {
-            final DBCursor<RuleDao> ruleDaos = dbCollection.find().sort(DBSort.asc("title"));
-            return ruleDaos.toArray();
+        try(DBCursor<RuleDao> ruleDaos = dbCollection.find().sort(DBSort.asc("title"))) {
+            return ImmutableSet.copyOf((Iterable<RuleDao>) ruleDaos);
         } catch (MongoException e) {
             log.error("Unable to load processing rules", e);
             return Collections.emptySet();
@@ -89,13 +107,13 @@ public class MongoDbRuleService implements RuleService {
         if (result.getN() != 1) {
             log.error("Unable to delete rule {}", id);
         }
+        clusterBus.post(RulesChangedEvent.deletedRuleId(id));
     }
 
     @Override
     public Collection<RuleDao> loadNamed(Collection<String> ruleNames) {
-        try {
-            final DBCursor<RuleDao> ruleDaos = dbCollection.find(DBQuery.in("title", ruleNames));
-            return Sets.newHashSet(ruleDaos.iterator());
+        try (DBCursor<RuleDao> ruleDaos = dbCollection.find(DBQuery.in("title", ruleNames))) {
+            return ImmutableSet.copyOf((Iterable<RuleDao>) ruleDaos);
         } catch (MongoException e) {
             log.error("Unable to bulk load rules", e);
             return Collections.emptySet();

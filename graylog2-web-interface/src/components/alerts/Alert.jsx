@@ -1,10 +1,25 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Col, Label } from 'react-bootstrap';
-import { Link } from 'react-router';
 
+import { Link } from 'components/graylog/router';
+import { Col, Label } from 'components/graylog';
 import { EntityListItem, Timestamp } from 'components/common';
-
 import Routes from 'routing/Routes';
 import DateTime from 'logic/datetimes/DateTime';
 
@@ -13,9 +28,13 @@ import styles from './Alert.css';
 class Alert extends React.Component {
   static propTypes = {
     alert: PropTypes.object.isRequired,
-    alertConditions: PropTypes.array.isRequired,
-    streams: PropTypes.array.isRequired,
-    conditionTypes: PropTypes.object.isRequired,
+    alertCondition: PropTypes.object,
+    stream: PropTypes.object.isRequired,
+    conditionType: PropTypes.object.isRequired,
+  };
+
+  static defaultProps = {
+    alertCondition: {},
   };
 
   state = {
@@ -23,17 +42,15 @@ class Alert extends React.Component {
   };
 
   render() {
-    const alert = this.props.alert;
-    const condition = this.props.alertConditions.find(alertCondition => alertCondition.id === alert.condition_id);
-    const stream = this.props.streams.find(s => s.id === alert.stream_id);
-    const conditionType = condition ? this.props.conditionTypes[condition.type] : {};
+    const { alert, alertCondition, stream, conditionType } = this.props;
 
     let alertTitle;
-    if (condition) {
+
+    if (alertCondition) {
       alertTitle = (
         <span>
           <Link to={Routes.show_alert(alert.id)}>
-            {condition.title || 'Untitled alert'}
+            {alertCondition.title || 'Untitled alert'}
           </Link>
           {' '}
           <small>on stream <em>{stream.title}</em></small>
@@ -48,6 +65,7 @@ class Alert extends React.Component {
     }
 
     let statusBadge;
+
     if (!alert.is_interval || alert.resolved_at) {
       statusBadge = <Label bsStyle="success">Resolved</Label>;
     } else {
@@ -55,13 +73,14 @@ class Alert extends React.Component {
     }
 
     let alertTime = <Timestamp dateTime={alert.triggered_at} format={DateTime.Formats.DATETIME} />;
+
     if (alert.is_interval) {
       alertTime = (
         <span>
           Triggered at {alertTime},&nbsp;
-          {alert.resolved_at ?
-            <span>resolved at <Timestamp dateTime={alert.resolved_at} format={DateTime.Formats.DATETIME} />.</span> :
-            <span><strong>still ongoing</strong>.</span>}
+          {alert.resolved_at
+            ? <span>resolved at <Timestamp dateTime={alert.resolved_at} format={DateTime.Formats.DATETIME} />.</span>
+            : <span><strong>still ongoing</strong>.</span>}
         </span>
       );
     } else {

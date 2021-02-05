@@ -1,16 +1,32 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, Col, Row } from 'react-bootstrap';
 
+import { Col, Row, Button } from 'components/graylog';
 import { Spinner } from 'components/common';
-
 import ActionsProvider from 'injection/ActionsProvider';
+import StoreProvider from 'injection/StoreProvider'; // To make IndexRangesActions work.
+import { IndexRangeSummary, ShardMeter, ShardRoutingOverview } from 'components/indices';
+
 const IndicesActions = ActionsProvider.getActions('Indices');
 const IndexRangesActions = ActionsProvider.getActions('IndexRanges');
-import StoreProvider from 'injection/StoreProvider';
-StoreProvider.getStore('IndexRanges'); // To make IndexRangesActions work.
 
-import { IndexRangeSummary, ShardMeter, ShardRoutingOverview } from 'components/indices';
+StoreProvider.getStore('IndexRanges');
 
 class IndexDetails extends React.Component {
   static propTypes = {
@@ -76,7 +92,9 @@ class IndexDetails extends React.Component {
     if (!this.props.index || !this.props.index.all_shards) {
       return <Spinner />;
     }
+
     const { index, indexRange, indexName } = this.props;
+
     return (
       <div className="index-info">
         <IndexRangeSummary indexRange={indexRange} />{' '}

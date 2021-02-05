@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.inputs.extractors;
 
@@ -30,10 +30,8 @@ import java.util.Map;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 public class LookupTableExtractor extends Extractor {
-    private static final String CONFIG_LUT_NAME = "lookup_table_name";
-    private final String sourceField;
-    private final String targetField;
     private final LookupTableService.Function lookupTable;
+    public static final String CONFIG_LUT_NAME = "lookup_table_name";
 
     public LookupTableExtractor(final MetricRegistry metricRegistry,
                                 final LookupTableService lookupTableService,
@@ -49,9 +47,6 @@ public class LookupTableExtractor extends Extractor {
                                 final ConditionType conditionType,
                                 final String conditionValue) throws ReservedFieldException, ConfigurationException {
         super(metricRegistry, id, title, order, Type.LOOKUP_TABLE, cursorStrategy, sourceField, targetField, extractorConfig, creatorUserId, converters, conditionType, conditionValue);
-
-        this.sourceField = sourceField;
-        this.targetField = targetField;
 
         final String lookupTableName = (String) extractorConfig.get(CONFIG_LUT_NAME);
         if (isNullOrEmpty(lookupTableName)) {

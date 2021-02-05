@@ -1,21 +1,22 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.lookup;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -47,6 +48,7 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +63,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Uninterruptibles.awaitUninterruptibly;
 import static java.lang.Math.toIntExact;
+import static java.util.Objects.requireNonNull;
 import static org.graylog2.shared.utilities.ExceptionUtils.getRootCauseMessage;
 import static org.graylog2.utilities.ObjectUtils.objectId;
 
@@ -79,6 +82,7 @@ public class LookupTableService extends AbstractIdleService {
 
     private final Map<String, LookupCache.Factory> cacheFactories;
     private final Map<String, LookupDataAdapter.Factory> adapterFactories;
+    private final Map<String, LookupDataAdapter.Factory2> adapterFactories2;
     private final ScheduledExecutorService scheduler;
     private final EventBus eventBus;
     private final LookupDataAdapterRefreshService adapterRefreshService;
@@ -97,6 +101,7 @@ public class LookupTableService extends AbstractIdleService {
                               DBLookupTableService dbTables,
                               Map<String, LookupCache.Factory> cacheFactories,
                               Map<String, LookupDataAdapter.Factory> adapterFactories,
+                              Map<String, LookupDataAdapter.Factory2> adapterFactories2,
                               @Named("daemonScheduler") ScheduledExecutorService scheduler,
                               EventBus eventBus) {
         this.dbAdapters = dbAdapters;
@@ -104,6 +109,7 @@ public class LookupTableService extends AbstractIdleService {
         this.dbTables = dbTables;
         this.cacheFactories = cacheFactories;
         this.adapterFactories = adapterFactories;
+        this.adapterFactories2 = adapterFactories2;
         this.scheduler = scheduler;
         this.eventBus = eventBus;
         this.adapterRefreshService = new LookupDataAdapterRefreshService(scheduler, liveTables);
@@ -268,7 +274,7 @@ public class LookupTableService extends AbstractIdleService {
     }
 
     private CountDownLatch createAndStartAdapters() {
-        final Set<LookupDataAdapter> adapters = dbAdapters.streamAll()
+        final Set<LookupDataAdapter> adapters = dbAdapters.findAll().stream()
                 .map(dto -> createAdapter(dto, null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -283,13 +289,19 @@ public class LookupTableService extends AbstractIdleService {
 
     private LookupDataAdapter createAdapter(DataAdapterDto dto, ImmutableSet.Builder<LookupDataAdapter> existingAdapters) {
         try {
+            final LookupDataAdapter.Factory2 factory2 = adapterFactories2.get(dto.config().type());
             final LookupDataAdapter.Factory factory = adapterFactories.get(dto.config().type());
-            if (factory == null) {
+            final LookupDataAdapter adapter;
+
+            if (factory2 != null) {
+                adapter = factory2.create(dto);
+            } else if (factory != null) {
+                adapter = factory.create(dto.id(), dto.name(), dto.config());
+            } else {
                 LOG.warn("Unable to load data adapter {} of type {}, missing a factory. Is a required plugin missing?", dto.name(), dto.config().type());
                 // TODO system notification
                 return null;
             }
-            final LookupDataAdapter adapter = factory.create(dto.id(), dto.name(), dto.config());
             adapter.addListener(new LoggingServiceListener(
                             "Data Adapter",
                             String.format(Locale.ENGLISH, "%s/%s [@%s]", dto.name(), dto.id(), objectId(adapter)),
@@ -320,7 +332,7 @@ public class LookupTableService extends AbstractIdleService {
     }
 
     private CountDownLatch createAndStartCaches() {
-        final Set<LookupCache> caches = dbCaches.streamAll()
+        final Set<LookupCache> caches = dbCaches.findAll().stream()
                 .map(dto -> createCache(dto, null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -449,7 +461,8 @@ public class LookupTableService extends AbstractIdleService {
     }
 
     @Nullable
-    private LookupTable getTable(String name) {
+    @VisibleForTesting
+    public LookupTable getTable(String name) {
         final LookupTable lookupTable = liveTables.get(name);
         if (lookupTable == null) {
             LOG.warn("Lookup table <{}> does not exist", name);
@@ -528,16 +541,74 @@ public class LookupTableService extends AbstractIdleService {
             // Otherwise we might hold on to an old lookup table instance when this function object is cached somewhere.
             final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
             if (lookupTable == null) {
-                return LookupResult.empty();
+                return LookupResult.withError();
             }
 
             final LookupResult result = lookupTable.lookup(key);
 
-            if (result == null || result.isEmpty()) {
+            if (result == null) {
+                return LookupResult.empty();
+            }
+            if (result.hasError()) {
+                return result;
+            }
+            if (result.isEmpty()) {
                 return LookupResult.empty();
             }
 
             return result;
+        }
+
+        private Object requireValidKey(Object key) {
+            return requireNonNull(key, "key cannot be null");
+        }
+
+        private List<String> requireValidStringList(List<String> values) {
+            return requireNonNull(values, "values cannot be null")
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .filter(v -> !v.isEmpty())
+                    .collect(Collectors.toList());
+        }
+
+        public LookupResult setValue(Object key, Object value) {
+            final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
+            if (lookupTable == null) {
+                return LookupResult.withError();
+            }
+            return lookupTable.setValue(requireValidKey(key), requireNonNull(value, "value cannot be null"));
+        }
+
+        public LookupResult setStringList(Object key, List<String> value) {
+            final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
+            if (lookupTable == null) {
+                return LookupResult.withError();
+            }
+            return lookupTable.setStringList(requireValidKey(key), requireValidStringList(value));
+        }
+
+        public LookupResult addStringList(Object key, List<String> value, boolean keepDuplicates) {
+            final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
+            if (lookupTable == null) {
+                return LookupResult.withError();
+            }
+            return lookupTable.addStringList(requireValidKey(key), requireValidStringList(value), keepDuplicates);
+        }
+
+        public LookupResult removeStringList(Object key, List<String> value) {
+            final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
+            if (lookupTable == null) {
+                return LookupResult.withError();
+            }
+            return lookupTable.removeStringList(requireValidKey(key), requireValidStringList(value));
+        }
+
+        public void clearKey(Object key) {
+            final LookupTable lookupTable = lookupTableService.getTable(lookupTableName);
+            if (lookupTable == null) {
+                return;
+            }
+            lookupTable.clearKey(requireValidKey(key));
         }
 
         public LookupTable getTable() {

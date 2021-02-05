@@ -1,9 +1,87 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
+import styled, { css } from 'styled-components';
+// eslint-disable-next-line no-restricted-imports
 import createReactClass from 'create-react-class';
-import { Col, Row } from 'react-bootstrap';
 
+import { Col, Row } from 'components/graylog';
 import { Pluralize } from 'components/common';
+
+const SimulationChangesWrap = styled.div`
+  padding-top: 15px;
+
+  dl {
+    margin-bottom: 10px;
+    margin-top: 5px;
+  }
+
+  dd {
+    padding: 1px 9px 3px;
+  }
+
+  dt {
+    margin-top: 1px;
+    padding: 3px 9px 1px;
+
+    &::after {
+      content: ": ";
+    }
+
+    &:first-child {
+      border-radius: 4px 4px 0 0;
+    }
+
+    ~ dd:last-child {
+      border-radius: 0 0 4px 4px;
+    }
+  }
+`;
+
+const OriginalChanges = styled.div`
+  margin-top: 10px;
+`;
+
+const FieldResultWrap = styled.div(({ resultType, theme }) => {
+  const { success, danger, info } = theme.colors.variant.light;
+  const types = {
+    added: success,
+    removed: danger,
+    mutated: info,
+  };
+
+  return `
+    dt,
+    dd {
+      background-color: ${types[resultType]};
+      color: ${theme.utils.contrastingColor(types[resultType])};
+    }
+  `;
+});
+
+const FieldValue = styled.dd(({ removed, theme }) => css`
+  font-family: ${theme.fonts.family.monospace};
+
+  ${removed && css`
+    text-decoration: line-through;
+    font-style: italic;
+  `}
+`);
 
 const SimulationChanges = createReactClass({
   displayName: 'SimulationChanges',
@@ -13,34 +91,23 @@ const SimulationChanges = createReactClass({
     simulationResults: PropTypes.object.isRequired,
   },
 
-  componentDidMount() {
-    this.style.use();
-  },
-
-  componentWillUnmount() {
-    this.style.unuse();
-  },
-
-  style: require('!style/useable!css!./SimulationChanges.css'),
-
   _isOriginalMessageRemoved(originalMessage, processedMessages) {
-    return !processedMessages.find(message => message.id === originalMessage.id);
+    return !processedMessages.find((message) => message.id === originalMessage.id);
   },
 
   _formatFieldTitle(field) {
     return <dt key={`${field}-key`}>{field}</dt>;
   },
 
-  _formatFieldValue(field, value, isAdded, isRemoved) {
-    const className = (isAdded ? 'added-field' : (isRemoved ? 'removed-field' : ''));
-    return <dd key={`${field}-value`} className={`field-value ${className}`}>{String(value)}</dd>;
+  _formatFieldValue(field, value, isRemoved = false) {
+    return <FieldValue key={`${field}-value`} removed={isRemoved}>{String(value)}</FieldValue>;
   },
 
   _formatAddedFields(originalMessage, processedMessage) {
     const originalFields = Object.keys(originalMessage.fields);
     const processedFields = Object.keys(processedMessage.fields);
 
-    const addedFields = processedFields.filter(field => originalFields.indexOf(field) === -1);
+    const addedFields = processedFields.filter((field) => originalFields.indexOf(field) === -1);
 
     if (addedFields.length === 0) {
       return null;
@@ -48,18 +115,18 @@ const SimulationChanges = createReactClass({
 
     const formattedFields = [];
 
-    addedFields.sort().forEach(field => {
+    addedFields.sort().forEach((field) => {
       formattedFields.push(this._formatFieldTitle(field));
-      formattedFields.push(this._formatFieldValue(field, processedMessage.fields[field], true, false));
+      formattedFields.push(this._formatFieldValue(field, processedMessage.fields[field]));
     });
 
     return (
-      <div className="added-fields">
+      <FieldResultWrap resultType="added">
         <h4>Added fields</h4>
         <dl>
           {formattedFields}
         </dl>
-      </div>
+      </FieldResultWrap>
     );
   },
 
@@ -67,7 +134,7 @@ const SimulationChanges = createReactClass({
     const originalFields = Object.keys(originalMessage.fields);
     const processedFields = Object.keys(processedMessage.fields);
 
-    const removedFields = originalFields.filter(field => processedFields.indexOf(field) === -1);
+    const removedFields = originalFields.filter((field) => processedFields.indexOf(field) === -1);
 
     if (removedFields.length === 0) {
       return null;
@@ -75,18 +142,18 @@ const SimulationChanges = createReactClass({
 
     const formattedFields = [];
 
-    removedFields.sort().forEach(field => {
+    removedFields.sort().forEach((field) => {
       formattedFields.push(this._formatFieldTitle(field));
-      formattedFields.push(this._formatFieldValue(field, originalMessage.fields[field], false, true));
+      formattedFields.push(this._formatFieldValue(field, originalMessage.fields[field]));
     });
 
     return (
-      <div className="removed-fields">
+      <FieldResultWrap resultType="removed">
         <h4>Removed fields</h4>
         <dl>
           {formattedFields}
         </dl>
-      </div>
+      </FieldResultWrap>
     );
   },
 
@@ -96,15 +163,17 @@ const SimulationChanges = createReactClass({
 
     const mutatedFields = [];
 
-    originalFields.forEach(field => {
+    originalFields.forEach((field) => {
       if (processedFields.indexOf(field) === -1) {
         return;
       }
+
       const originalValue = originalMessage.fields[field];
       const processedValue = processedMessage.fields[field];
 
       if (typeof originalValue !== typeof processedValue) {
         mutatedFields.push(field);
+
         return;
       }
 
@@ -120,31 +189,31 @@ const SimulationChanges = createReactClass({
 
     const formattedFields = [];
 
-    mutatedFields.sort().forEach(field => {
+    mutatedFields.sort().forEach((field) => {
       formattedFields.push(this._formatFieldTitle(field));
-      formattedFields.push(this._formatFieldValue(`${field}-original`, originalMessage.fields[field], false, true));
-      formattedFields.push(this._formatFieldValue(field, processedMessage.fields[field], true, false));
+      formattedFields.push(this._formatFieldValue(`${field}-original`, originalMessage.fields[field], true));
+      formattedFields.push(this._formatFieldValue(field, processedMessage.fields[field]));
     });
 
     return (
-      <div className="mutated-fields">
+      <FieldResultWrap resultType="mutated">
         <h4>Mutated fields</h4>
         <dl>
           {formattedFields}
         </dl>
-      </div>
+      </FieldResultWrap>
     );
   },
 
   _getOriginalMessageChanges() {
-    const originalMessage = this.props.originalMessage;
-    const processedMessages = this.props.simulationResults.messages;
+    const { originalMessage, simulationResults } = this.props;
+    const processedMessages = simulationResults.messages;
 
     if (this._isOriginalMessageRemoved(originalMessage, processedMessages)) {
       return <p>Original message would be dropped during processing.</p>;
     }
 
-    const processedMessage = processedMessages.find(message => message.id === originalMessage.id);
+    const processedMessage = processedMessages.find((message) => message.id === originalMessage.id);
 
     const formattedAddedFields = this._formatAddedFields(originalMessage, processedMessage);
     const formattedRemovedFields = this._formatRemovedFields(originalMessage, processedMessage);
@@ -155,21 +224,23 @@ const SimulationChanges = createReactClass({
     }
 
     return (
-      <div className="original-message-changes">
+      <OriginalChanges>
         {formattedAddedFields}
         {formattedRemovedFields}
         {formattedMutatedFields}
-      </div>
+      </OriginalChanges>
     );
   },
 
   _formatOriginalMessageChanges() {
+    const { originalMessage } = this.props;
+
     return (
       <Row className="row-sm">
         <Col md={12}>
           <h3>
             Changes in original message{' '}
-            <small><em>{this.props.originalMessage.id}</em></small>
+            <small><em>{originalMessage.id}</em></small>
           </h3>
           {this._getOriginalMessageChanges()}
         </Col>
@@ -178,10 +249,9 @@ const SimulationChanges = createReactClass({
   },
 
   _formatOtherChanges() {
-    const originalMessageId = this.props.originalMessage.id;
-    const simulatedMessages = this.props.simulationResults.messages;
+    const { originalMessage, simulationResults } = this.props;
 
-    const createdMessages = simulatedMessages.filter(message => message.id !== originalMessageId);
+    const createdMessages = simulationResults.messages.filter((message) => message.id !== originalMessage.id);
 
     if (createdMessages.length === 0) {
       return null;
@@ -204,10 +274,10 @@ const SimulationChanges = createReactClass({
 
   render() {
     return (
-      <div className="simulation-changes">
+      <SimulationChangesWrap>
         {this._formatOriginalMessageChanges()}
         {this._formatOtherChanges()}
-      </div>
+      </SimulationChangesWrap>
     );
   },
 });

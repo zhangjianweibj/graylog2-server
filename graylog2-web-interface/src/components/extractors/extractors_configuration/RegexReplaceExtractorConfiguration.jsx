@@ -1,15 +1,31 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Button, Col, Row } from 'react-bootstrap';
 
+import { Col, Row, Button } from 'components/graylog';
+import { Icon } from 'components/common';
 import { Input } from 'components/bootstrap';
 import DocumentationLink from 'components/support/DocumentationLink';
 import DocsHelper from 'util/DocsHelper';
-
 import UserNotification from 'util/UserNotification';
 import FormUtils from 'util/FormsUtils';
-
 import StoreProvider from 'injection/StoreProvider';
+
 const ToolsStore = StoreProvider.getStore('Tools');
 
 class RegexReplaceExtractorConfiguration extends React.Component {
@@ -28,6 +44,7 @@ class RegexReplaceExtractorConfiguration extends React.Component {
     return (event) => {
       this.props.onExtractorPreviewLoad(undefined);
       const newConfig = this.props.configuration;
+
       newConfig[key] = FormUtils.getValueFromInput(event.target);
       this.props.onChange(newConfig);
     };
@@ -36,21 +53,25 @@ class RegexReplaceExtractorConfiguration extends React.Component {
   _onTryClick = () => {
     this.setState({ trying: true });
 
-    const configuration = this.props.configuration;
+    const { configuration } = this.props;
     const promise = ToolsStore.testRegexReplace(configuration.regex, configuration.replacement,
       configuration.replace_all, this.props.exampleMessage);
+
     promise.then((result) => {
       if (!result.matched) {
         UserNotification.warning('Regular expression did not match.');
+
         return;
       }
 
       if (!result.match) {
         UserNotification.warning('Regular expression does not contain any matcher group to extract.');
+
         return;
       }
 
       const preview = (result.match.match ? <samp>{result.match.match}</samp> : '');
+
       this.props.onExtractorPreviewLoad(preview);
     });
 
@@ -64,15 +85,16 @@ class RegexReplaceExtractorConfiguration extends React.Component {
   render() {
     const regexHelpMessage = (
       <span>
-          The regular expression used for extraction.{' '}
+        The regular expression used for extraction.{' '}
         Learn more in the <DocumentationLink page={DocsHelper.PAGES.EXTRACTORS} text="documentation" />.
-        </span>
+      </span>
     );
 
     const replacementHelpMessage = (
       <span>The replacement used for the matching text. Please refer to the{' '}
         <a target="_blank"
-           href="https://docs.oracle.com/javase/7/docs/api/java/util/regex/Matcher.html#replaceAll(java.lang.String)">Matcher</a>{' '}
+           href="https://docs.oracle.com/javase/7/docs/api/java/util/regex/Matcher.html#replaceAll(java.lang.String)">Matcher
+        </a>{' '}
         API documentation for the possible options.
       </span>
     );
@@ -112,7 +134,7 @@ class RegexReplaceExtractorConfiguration extends React.Component {
         <Row>
           <Col mdOffset={2} md={10}>
             <Button bsStyle="info" onClick={this._onTryClick} disabled={this._isTryButtonDisabled()}>
-              {this.state.trying ? <i className="fa fa-spin fa-spinner" /> : 'Try'}
+              {this.state.trying ? <Icon name="spinner" spin /> : 'Try'}
             </Button>
           </Col>
         </Row>

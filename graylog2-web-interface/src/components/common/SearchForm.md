@@ -1,7 +1,7 @@
 Search form with uncontrolled query string:
 ```js
-const createReactClass = require('create-react-class');
-const Button = require('react-bootstrap').Button;
+import createReactClass from 'create-react-class';
+import { Button } from 'components/graylog';
 
 const SearchFormExample = createReactClass({
   getInitialState() {
@@ -40,11 +40,12 @@ const SearchFormExample = createReactClass({
 <SearchFormExample />
 ```
 
-Search form with controlled query string:
+Search form with controlled query string and help:
 
 ```js
-const createReactClass = require('create-react-class');
-const Button = require('react-bootstrap').Button;
+import createReactClass from 'create-react-class';
+import { Button } from 'components/graylog';
+import { Icon } from 'components/common';
 
 const SearchFormExample = createReactClass({
   getInitialState() {
@@ -79,6 +80,11 @@ const SearchFormExample = createReactClass({
                     query={this.state.queryTemplate}
                     searchBsStyle="info"
                     label="Search"
+                    queryWidth={300}
+                    queryHelpComponent={(
+                      <Button onClick={() => alert('help!')} bsStyle="link">
+                        <Icon name="question-circle" />
+                      </Button>)}
                     useLoadingState />
       </div>
     );

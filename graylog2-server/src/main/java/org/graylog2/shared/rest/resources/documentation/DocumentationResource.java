@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.rest.resources.documentation;
 
@@ -92,13 +92,30 @@ public class DocumentationResource extends RestResource {
 
     @GET
     @Timed
+    @ApiOperation(value = "Get API documentation with cluster global URI path")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/global")
+    public Response globalOverview() {
+        return buildSuccessfulCORSResponse(generator.generateOverview());
+    }
+
+    @GET
+    @Timed
     @ApiOperation(value = "Get detailed API documentation of a single resource")
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{route: .+}")
     public Response route(@ApiParam(name = "route", value = "Route to fetch. For example /system", required = true)
                           @PathParam("route") String route,
                           @Context HttpHeaders httpHeaders) {
-        final URI baseUri = RestTools.buildExternalUri(httpHeaders.getRequestHeaders(), httpConfiguration.getHttpExternalUri()).resolve(HttpConfiguration.PATH_API);
+        // If the documentation was requested from "cluster global mode", use the HttpExternalUri for the baseUri.
+        // Otherwise use the per node HttpPublishUri.
+        URI baseUri;
+        if (route.startsWith("global")) {
+            route = route.replace("global", "");
+            baseUri = RestTools.buildExternalUri(httpHeaders.getRequestHeaders(), httpConfiguration.getHttpExternalUri()).resolve(HttpConfiguration.PATH_API);
+        } else {
+            baseUri = httpConfiguration.getHttpPublishUri().resolve(HttpConfiguration.PATH_API);
+        }
         return buildSuccessfulCORSResponse(generator.generateForRoute(route, baseUri.toString()));
     }
 

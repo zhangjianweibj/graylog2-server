@@ -1,8 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (C) 2020 Graylog, Inc.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the Server Side Public License, version 1,
+    as published by MongoDB, Inc.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    Server Side Public License for more details.
+
+    You should have received a copy of the Server Side Public License
+    along with this program. If not, see
+    <http://www.mongodb.com/licensing/server-side-public-license>.
+
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.graylog.plugins</groupId>
+        <artifactId>graylog-plugin-web-parent</artifactId>
+        <version>3.0.0-alpha.3-SNAPSHOT</version>
+        <relativePath>${serverCheckoutPath}/graylog-plugin-parent/graylog-plugin-web-parent</relativePath>
+    </parent>
+
     <groupId>${groupId}</groupId>
     <artifactId>${artifactId}</artifactId>
     <version>${version}</version>
@@ -34,7 +60,7 @@
         <!-- Plugins will not be deployed by default - set to `false` if you actually want to deploy it -->
         <maven.deploy.skip>true</maven.deploy.skip>
 
-        <graylog.version>2.1.1</graylog.version>
+        <graylog.version>${project.parent.version}</graylog.version>
         <graylog.plugin-dir>/usr/share/graylog-server/plugin</graylog.plugin-dir>
     </properties>
 
@@ -84,11 +110,19 @@
             <version>${graylog.version}</version>
             <scope>provided</scope>
         </dependency>
+        <!-- Include source from test-jar to reuse test classes. -->
+        <dependency>
+            <groupId>org.graylog2</groupId>
+            <artifactId>graylog2-server</artifactId>
+            <version>${graylog.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <resources>
-            <resource><directory>build</directory></resource>
+            <resource><directory>${web.build-dir}</directory></resource>
             <resource>
               <directory>src/main/resources</directory>
               <filtering>true</filtering>
@@ -219,7 +253,6 @@
                     <plugin>
                         <groupId>com.github.eirslett</groupId>
                         <artifactId>frontend-maven-plugin</artifactId>
-                        <version>1.3</version>
 
                         <executions>
                             <execution>
@@ -228,8 +261,8 @@
                                     <goal>install-node-and-yarn</goal>
                                 </goals>
                                 <configuration>
-                                    <nodeVersion>v8.9.1</nodeVersion>
-                                    <yarn.version>v1.3.2</yarn.version>
+                                    <nodeVersion>${nodejs.version}</nodeVersion>
+                                    <yarnVersion>${yarn.version}</yarnVersion>
                                 </configuration>
                             </execution>
 

@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.map.geoip;
 
@@ -43,7 +43,6 @@ import static com.codahale.metrics.MetricRegistry.name;
 
 public class GeoIpResolverEngine {
     private static final Logger LOG = LoggerFactory.getLogger(GeoIpResolverEngine.class);
-    private static final String INTERNAL_FIELD_PREFIX = "gl2_";
 
     private final Timer resolveTime;
     private DatabaseReader databaseReader;
@@ -75,7 +74,7 @@ public class GeoIpResolverEngine {
 
         for (Map.Entry<String, Object> field : message.getFields().entrySet()) {
             final String key = field.getKey();
-            if (!key.startsWith(INTERNAL_FIELD_PREFIX)) {
+            if (!key.startsWith(Message.INTERNAL_FIELD_PREFIX)) {
                 final Optional<GeoLocationInformation> geoLocationInformation = extractGeoLocationInformation(field.getValue());
                 geoLocationInformation.ifPresent(locationInformation -> {
                     // We will store the coordinates as a "lat,long" string

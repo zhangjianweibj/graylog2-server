@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.periodical;
 
@@ -136,14 +136,14 @@ public class PeriodicalsTest {
 
         verify(periodical, never()).run();
 
-        assertEquals("Future for the periodical was not added to the futures Map", periodicals.getFutures().get(periodical), future);
+        assertEquals("Future for the periodical was not added to the futures Map", future, periodicals.getFutures().get(periodical));
     }
 
     @Test
     public void testGetAll() throws Exception {
         periodicals.registerAndStart(periodical);
 
-        assertEquals("getAll() did not return all periodicals", periodicals.getAll(), Lists.newArrayList(periodical));
+        assertEquals("getAll() did not return all periodicals", Lists.newArrayList(periodical), periodicals.getAll());
     }
 
     @Test
@@ -152,7 +152,7 @@ public class PeriodicalsTest {
 
         periodicals.getAll().add(periodical);
 
-        assertEquals("getAll() did not return a copy of the periodicals List", periodicals.getAll().size(), 1);
+        assertEquals("getAll() did not return a copy of the periodicals List", 1, periodicals.getAll().size());
     }
 
     @Test
@@ -167,7 +167,7 @@ public class PeriodicalsTest {
 
         assertFalse("periodical without graceful shutdown is in the list", allStoppedOnGracefulShutdown.contains(periodical));
         assertTrue("graceful shutdown periodical is not in the list", allStoppedOnGracefulShutdown.contains(periodical2));
-        assertEquals("more graceful shutdown periodicals in the list", allStoppedOnGracefulShutdown.size(), 1);
+        assertEquals("more graceful shutdown periodicals in the list", 1, allStoppedOnGracefulShutdown.size());
     }
 
     @Test
@@ -175,7 +175,7 @@ public class PeriodicalsTest {
         periodicals.registerAndStart(periodical);
 
         assertTrue("missing periodical in future Map", periodicals.getFutures().containsKey(periodical));
-        assertEquals(periodicals.getFutures().size(), 1);
+        assertEquals(1, periodicals.getFutures().size());
     }
 
     @Test
@@ -187,7 +187,7 @@ public class PeriodicalsTest {
         periodicals.getFutures().put(periodical2, null);
 
         assertFalse("getFutures() did not return a copy of the Map", periodicals.getFutures().containsKey(periodical2));
-        assertEquals(periodicals.getFutures().size(), 1);
+        assertEquals(1, periodicals.getFutures().size());
     }
 
     @Test

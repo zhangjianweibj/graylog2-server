@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.system.traffic;
 
@@ -98,23 +98,24 @@ public class TrafficCounterService {
                 DBQuery.greaterThan(BUCKET, from)
         );
 
-        final DBCursor<TrafficDto> cursor = db.find(query);
-        cursor.forEach(trafficDto -> {
-            inputBuilder.put(trafficDto.bucket(), trafficDto.input().values().stream().mapToLong(Long::valueOf).sum());
-            outputBuilder.put(trafficDto.bucket(), trafficDto.output().values().stream().mapToLong(Long::valueOf).sum());
-            decodedBuilder.put(trafficDto.bucket(), trafficDto.decoded().values().stream().mapToLong(Long::valueOf).sum());
-        });
-        Map<DateTime, Long> inputHistogram = inputBuilder.build();
-        Map<DateTime, Long> outputHistogram = outputBuilder.build();
-        Map<DateTime, Long> decodedHistogram = decodedBuilder.build();
+        try (DBCursor<TrafficDto> cursor = db.find(query)) {
+            cursor.forEach(trafficDto -> {
+                inputBuilder.put(trafficDto.bucket(), trafficDto.input().values().stream().mapToLong(Long::valueOf).sum());
+                outputBuilder.put(trafficDto.bucket(), trafficDto.output().values().stream().mapToLong(Long::valueOf).sum());
+                decodedBuilder.put(trafficDto.bucket(), trafficDto.decoded().values().stream().mapToLong(Long::valueOf).sum());
+            });
+            Map<DateTime, Long> inputHistogram = inputBuilder.build();
+            Map<DateTime, Long> outputHistogram = outputBuilder.build();
+            Map<DateTime, Long> decodedHistogram = decodedBuilder.build();
 
-        // we might need to aggregate the hourly database values to their UTC daily buckets
-        if (interval == Interval.DAILY) {
-            inputHistogram = aggregateToDaily(inputHistogram);
-            outputHistogram = aggregateToDaily(outputHistogram);
-            decodedHistogram = aggregateToDaily(decodedHistogram);
+            // we might need to aggregate the hourly database values to their UTC daily buckets
+            if (interval == Interval.DAILY) {
+                inputHistogram = aggregateToDaily(inputHistogram);
+                outputHistogram = aggregateToDaily(outputHistogram);
+                decodedHistogram = aggregateToDaily(decodedHistogram);
+            }
+            return TrafficHistogram.create(from, to, inputHistogram, outputHistogram, decodedHistogram);
         }
-        return TrafficHistogram.create(from, to, inputHistogram, outputHistogram, decodedHistogram);
     }
 
     private TreeMap<DateTime, Long> aggregateToDaily(Map<DateTime, Long> histogram) {

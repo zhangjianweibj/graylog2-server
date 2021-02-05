@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.shared.system.stats.fs;
 
@@ -49,6 +49,14 @@ public abstract class FsStats {
         @JsonProperty
         @Nullable
         public abstract String dev();
+
+        @JsonProperty
+        @Nullable
+        public  abstract String typeName();
+
+        @JsonProperty
+        @Nullable
+        public  abstract String sysTypeName();
 
         @JsonProperty
         public abstract long total();
@@ -98,6 +106,8 @@ public abstract class FsStats {
         public static Filesystem create(String path,
                                         String mount,
                                         String dev,
+                                        String typeName,
+                                        String sysTypeName,
                                         long total,
                                         long free,
                                         long available,
@@ -114,7 +124,7 @@ public abstract class FsStats {
                                         double diskQueue,
                                         double diskServiceTime) {
             return new AutoValue_FsStats_Filesystem(
-                    path, mount, dev, total, free, available, used, usedPercent,
+                    path, mount, dev, typeName, sysTypeName, total, free, available, used, usedPercent,
                     inodesTotal, inodesFree, inodesUsed, inodesUsedPercent,
                     diskReads, diskWrites, diskReadBytes, diskWriteBytes, diskQueue, diskServiceTime);
         }
@@ -125,7 +135,7 @@ public abstract class FsStats {
                                         long available,
                                         long used,
                                         short usedPercent) {
-            return create(path, null, null, total, free, available, used, usedPercent,
+            return create(path, null, null, null, null, total, free, available, used, usedPercent,
                     -1L, -1L, -1L, (short) -1, -1L, -1L, -1L, -1L, -1L, -1L);
         }
     }

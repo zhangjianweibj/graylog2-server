@@ -1,24 +1,24 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.functions.strings;
 
 import com.google.common.collect.ForwardingMap;
-import oi.thekraken.grok.api.Grok;
-import oi.thekraken.grok.api.Match;
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.Match;
 import org.graylog.plugins.pipelineprocessor.EvaluationContext;
 import org.graylog.plugins.pipelineprocessor.ast.functions.AbstractFunction;
 import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionArgs;
@@ -62,9 +62,8 @@ public class GrokMatch extends AbstractFunction<GrokMatch.GrokResult> {
 
         final Grok grok = grokPatternRegistry.cachedGrokForPattern(pattern, onlyNamedCaptures);
 
-        final Match match = grok.match(value);
-        match.captures();
-        return new GrokResult(match.toMap());
+        final Match match = grok.match(value);;
+        return new GrokResult(match.captureFlattened());
     }
 
     @Override
@@ -93,6 +92,4 @@ public class GrokMatch extends AbstractFunction<GrokMatch.GrokResult> {
             return captures.size() > 0;
         }
     }
-
-
 }

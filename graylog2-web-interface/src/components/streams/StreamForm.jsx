@@ -1,5 +1,22 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
+
 import BootstrapModalForm from 'components/bootstrap/BootstrapModalForm';
 import { Input } from 'components/bootstrap';
 import { Select, Spinner } from 'components/common';
@@ -32,8 +49,10 @@ class StreamForm extends React.Component {
 
   _getValuesFromProps = (props) => {
     let defaultIndexSetId = props.stream.index_set_id;
+
     if (!defaultIndexSetId && props.indexSets && props.indexSets.length > 0) {
-      const defaultIndexSet = props.indexSets.find(indexSet => indexSet.default);
+      const defaultIndexSet = props.indexSets.find((indexSet) => indexSet.default);
+
       if (defaultIndexSet) {
         defaultIndexSetId = defaultIndexSet.id;
       }
@@ -55,6 +74,7 @@ class StreamForm extends React.Component {
         remove_matches_from_default_stream: this.state.removeMatchesFromDefaultStream,
         index_set_id: this.state.indexSetId,
       });
+
     this.modal.close();
   };
 
@@ -69,7 +89,7 @@ class StreamForm extends React.Component {
   };
 
   _formatSelectOptions = () => {
-    return this.props.indexSets.filter(indexSet => indexSet.writable).map((indexSet) => {
+    return this.props.indexSets.filter((indexSet) => indexSet.writable).map((indexSet) => {
       return { value: indexSet.id, label: indexSet.title };
     });
   };
@@ -80,6 +100,7 @@ class StreamForm extends React.Component {
 
   handleChange = (event) => {
     const change = {};
+
     change[event.target.name] = FormsUtils.getValueFromInput(event.target);
     this.setState(change);
   };
@@ -90,12 +111,13 @@ class StreamForm extends React.Component {
     const { title, description, removeMatchesFromDefaultStream, indexSetId } = this.state;
 
     let indexSetSelect;
+
     if (this.props.indexSets) {
       indexSetSelect = (
         <Input id="index-set-selector"
                label="Index Set"
                help="Messages that match this stream will be written to the configured index set.">
-          <Select inputProps={{ id: 'index-set-selector' }}
+          <Select inputId="index-set-selector"
                   placeholder="Select index set"
                   options={this._formatSelectOptions()}
                   matchProp="label"

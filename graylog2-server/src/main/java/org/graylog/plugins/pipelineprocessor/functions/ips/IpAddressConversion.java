@@ -1,33 +1,32 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog.plugins.pipelineprocessor.functions.ips;
 
+import static com.google.common.collect.ImmutableList.of;
+
 import com.google.common.net.InetAddresses;
+import java.net.InetAddress;
+import java.util.IllegalFormatException;
+import java.util.Optional;
 import org.graylog.plugins.pipelineprocessor.EvaluationContext;
 import org.graylog.plugins.pipelineprocessor.ast.functions.AbstractFunction;
 import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionArgs;
 import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionDescriptor;
 import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
-
-import java.net.InetAddress;
-import java.util.IllegalFormatException;
-import java.util.Optional;
-
-import static com.google.common.collect.ImmutableList.of;
 
 public class IpAddressConversion extends AbstractFunction<IpAddress> {
 
@@ -44,11 +43,14 @@ public class IpAddressConversion extends AbstractFunction<IpAddress> {
 
     @Override
     public IpAddress evaluate(FunctionArgs args, EvaluationContext context) {
-        final String ipString = String.valueOf(ipParam.required(args, context));
-
+        final Object ip = ipParam.required(args, context);
         try {
-            final InetAddress inetAddress = InetAddresses.forString(ipString);
-            return new IpAddress(inetAddress);
+            if (ip instanceof Number) {
+                // this is only valid for IPv4 addresses, v6 requires 128 bits which we don't support
+                return new IpAddress(InetAddresses.fromInteger(((Number) ip).intValue()));
+            } else {
+                return new IpAddress(InetAddresses.forString(String.valueOf(ip)));
+            }
         } catch (IllegalArgumentException e) {
             final Optional<String> defaultValue = defaultParam.optional(args, context);
             if (!defaultValue.isPresent()) {

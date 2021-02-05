@@ -1,17 +1,33 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { Row, Col } from 'react-bootstrap';
 
+import { Row, Col } from 'components/graylog';
 import { DocumentTitle, PageHeader, Spinner } from 'components/common';
-
 import StoreProvider from 'injection/StoreProvider';
+import DateTime from 'logic/datetimes/DateTime';
+import withParams from 'routing/withParams';
+
 const NodesStore = StoreProvider.getStore('Nodes');
 const CurrentUserStore = StoreProvider.getStore('CurrentUser');
 const ClusterOverviewStore = StoreProvider.getStore('ClusterOverview');
-
-import DateTime from 'logic/datetimes/DateTime';
 
 function nodeFilter(state) {
   return state.nodes ? state.nodes[this.props.params.nodeId] : state.nodes;
@@ -27,7 +43,7 @@ const ThreadDumpPage = createReactClass({
   mixins: [Reflux.connect(CurrentUserStore), Reflux.connectFilter(NodesStore, 'node', nodeFilter)],
 
   componentDidMount() {
-    ClusterOverviewStore.threadDump(this.props.params.nodeId).then(threadDump => this.setState({ threadDump: threadDump }));
+    ClusterOverviewStore.threadDump(this.props.params.nodeId).then((threadDump) => this.setState({ threadDump: threadDump }));
   },
 
   _isLoading() {
@@ -55,7 +71,7 @@ const ThreadDumpPage = createReactClass({
           <PageHeader title={title}>
             <span />
           </PageHeader>
-          <Row className="content input-list">
+          <Row className="content">
             <Col md={12}>
               {threadDump}
             </Col>
@@ -66,4 +82,4 @@ const ThreadDumpPage = createReactClass({
   },
 });
 
-export default ThreadDumpPage;
+export default withParams(ThreadDumpPage);

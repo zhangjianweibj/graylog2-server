@@ -1,18 +1,18 @@
-/**
- * This file is part of Graylog.
+/*
+ * Copyright (C) 2020 Graylog, Inc.
  *
- * Graylog is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
  *
- * Graylog is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with Graylog.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
  */
 package org.graylog2.plugin.inputs.transports;
 
@@ -69,6 +69,9 @@ public class AbstractTcpTransportTest {
     @Mock
     private MessageInput input;
 
+    @Mock
+    private org.graylog2.Configuration graylogConfiguration;
+
     private ThroughputCounter throughputCounter;
     private LocalMetricRegistry localRegistry;
     private NioEventLoopGroup eventLoopGroup;
@@ -97,7 +100,7 @@ public class AbstractTcpTransportTest {
         );
 
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {
+                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {
         };
         final MessageInput input = mock(MessageInput.class);
         assertThat(transport.getChildChannelHandlers(input)).containsKey("tls");
@@ -116,7 +119,7 @@ public class AbstractTcpTransportTest {
         );
 
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {};
+            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {};
 
         expectedException.expect(IllegalStateException.class);
         expectedException.expectMessage("Couldn't write to temporary directory: " + tmpDir.getAbsolutePath());
@@ -138,7 +141,7 @@ public class AbstractTcpTransportTest {
         );
 
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {};
+            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {};
 
         expectedException.expect(IllegalStateException.class);
         expectedException.expectMessage("Couldn't write to temporary directory: " + tmpDir.getAbsolutePath());
@@ -159,7 +162,7 @@ public class AbstractTcpTransportTest {
         );
 
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {};
+            configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {};
 
         expectedException.expect(IllegalStateException.class);
         expectedException.expectMessage("Couldn't write to temporary directory: " + file.getAbsolutePath());
@@ -174,7 +177,7 @@ public class AbstractTcpTransportTest {
                 "bind_address", "127.0.0.1",
                 "port", 0));
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {
+                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {
         };
         transport.launch(input);
 
@@ -200,12 +203,13 @@ public class AbstractTcpTransportTest {
     }
 
     @Test
+    @Ignore("Disabled test due to being unreliable. For details see https://github.com/Graylog2/graylog2-server/issues/4791.")
     public void testConnectionCounter() throws Exception {
         final Configuration configuration = new Configuration(ImmutableMap.of(
                 "bind_address", "127.0.0.1",
                 "port", 0));
         final AbstractTcpTransport transport = new AbstractTcpTransport(
-                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration) {
+                configuration, throughputCounter, localRegistry, eventLoopGroup, eventLoopGroupFactory, nettyTransportConfiguration, graylogConfiguration) {
         };
         transport.launch(input);
 

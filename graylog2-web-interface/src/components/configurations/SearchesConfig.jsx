@@ -1,12 +1,29 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
-import { Button, Row, Col } from 'react-bootstrap';
+import moment from 'moment';
+
+import { Button, Row, Col } from 'components/graylog';
 import { BootstrapModalForm, Input } from 'components/bootstrap';
 import { IfPermitted, ISODurationInput } from 'components/common';
 import ObjectUtils from 'util/ObjectUtils';
 
-import moment from 'moment';
 import {} from 'moment-duration-format';
 
 import TimeRangeOptionsForm from './TimeRangeOptionsForm';
@@ -96,7 +113,7 @@ const SearchesConfig = createReactClass({
   },
 
   _splitStringList(stringList) {
-    return stringList.split(',').map(f => f.trim()).filter(f => f.length > 0);
+    return stringList.split(',').map((f) => f.trim()).filter((f) => f.length > 0);
   },
 
   _saveConfig() {
@@ -144,11 +161,11 @@ const SearchesConfig = createReactClass({
   },
 
   _openModal() {
-    this.refs.searchesConfigModal.open();
+    this.searchesConfigModal.open();
   },
 
   _closeModal() {
-    this.refs.searchesConfigModal.close();
+    this.searchesConfigModal.close();
   },
 
   queryTimeRangeLimitValidator(milliseconds) {
@@ -164,12 +181,13 @@ const SearchesConfig = createReactClass({
   },
 
   render() {
-    const config = this.state.config;
+    const { config } = this.state;
     const duration = moment.duration(config.query_time_range_limit);
     const limit = this._isEnabled() ? `${config.query_time_range_limit} (${duration.format()})` : 'disabled';
 
     let filterFields;
     let filterFieldsString;
+
     if (this.state.config.surrounding_filter_fields) {
       filterFields = this.state.config.surrounding_filter_fields.map((f, idx) => <li key={idx}>{f}</li>);
       filterFieldsString = this.state.config.surrounding_filter_fields.join(', ');
@@ -177,6 +195,7 @@ const SearchesConfig = createReactClass({
 
     let analysisDisabledFields;
     let analysisDisabledFieldsString;
+
     if (this.state.config.analysis_disabled_fields) {
       analysisDisabledFields = this.state.config.analysis_disabled_fields.map((f, idx) => <li key={idx}>{f}</li>);
       analysisDisabledFieldsString = this.state.config.analysis_disabled_fields.join(', ');
@@ -190,7 +209,8 @@ const SearchesConfig = createReactClass({
           <dt>Query time range limit</dt>
           <dd>{limit}</dd>
           <dd>The maximum time users can query data in the past. This prevents users from accidentally creating queries which
-            span a lot of data and would need a long time and many resources to complete (if at all).</dd>
+            span a lot of data and would need a long time and many resources to complete (if at all).
+          </dd>
         </dl>
 
         <Row>
@@ -217,7 +237,7 @@ const SearchesConfig = createReactClass({
           <Button bsStyle="info" bsSize="xs" onClick={this._openModal}>Update</Button>
         </IfPermitted>
 
-        <BootstrapModalForm ref="searchesConfigModal"
+        <BootstrapModalForm ref={(searchesConfigModal) => { this.searchesConfigModal = searchesConfigModal; }}
                             title="Update Search Configuration"
                             onSubmitForm={this._saveConfig}
                             onModalClose={this._resetConfig}
@@ -229,7 +249,8 @@ const SearchesConfig = createReactClass({
                    name="enabled"
                    checked={this._isEnabled()}
                    onChange={this._onChecked} />
-            {this._isEnabled() &&
+            {this._isEnabled()
+            && (
             <ISODurationInput id="query-timerange-limit-field"
                               duration={config.query_time_range_limit}
                               update={this._onUpdate('query_time_range_limit')}
@@ -237,7 +258,7 @@ const SearchesConfig = createReactClass({
                               help={'The maximum time range for searches. (i.e. "P30D" for 30 days, "PT24H" for 24 hours)'}
                               validator={this.queryTimeRangeLimitValidator}
                               required />
-            }
+            )}
 
             <TimeRangeOptionsForm options={this.state.relativeTimeRangeOptionsUpdate || this._buildTimeRangeOptions(this.state.config.relative_timerange_options)}
                                   update={this._onRelativeTimeRangeOptionsUpdate}

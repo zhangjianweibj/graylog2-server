@@ -1,23 +1,39 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
 import createReactClass from 'create-react-class';
 import Reflux from 'reflux';
-import { LinkContainer } from 'react-router-bootstrap';
-import { Button, ButtonToolbar, Label, Tooltip } from 'react-bootstrap';
 
+import { LinkContainer } from 'components/graylog/router';
+import { ButtonToolbar, Label, Tooltip, Button } from 'components/graylog';
 import { DocumentTitle, OverlayElement, PageHeader, Spinner, Timestamp } from 'components/common';
 import { AlertDetails } from 'components/alerts';
-
 import DateTime from 'logic/datetimes/DateTime';
 import UserNotification from 'util/UserNotification';
 import Routes from 'routing/Routes';
-
 import CombinedProvider from 'injection/CombinedProvider';
+import withParams from 'routing/withParams';
+
+import style from './ShowAlertPage.css';
+
 const { AlertsStore, AlertsActions } = CombinedProvider.get('Alerts');
 const { AlertConditionsStore, AlertConditionsActions } = CombinedProvider.get('AlertConditions');
 const { StreamsStore } = CombinedProvider.get('Streams');
-
-import style from './ShowAlertPage.css';
 
 const ShowAlertPage = createReactClass({
   displayName: 'ShowAlertPage',
@@ -53,6 +69,7 @@ const ShowAlertPage = createReactClass({
     StreamsStore.get(alert.stream_id, (stream) => {
       this.setState({ stream: stream });
     });
+
     AlertConditionsActions.get(alert.stream_id, alert.condition_id, (error) => {
       if (error.additional && error.additional.status === 404) {
         this.setState({ alertCondition: {} });
@@ -64,7 +81,7 @@ const ShowAlertPage = createReactClass({
   },
 
   _isLoading() {
-    return !this.state.alert || !this.state.alertCondition || !this.state.types || !this.state.stream;
+    return !this.state.alert || !this.state.alertCondition || !this.state.availableConditions || !this.state.stream;
   },
 
   render() {
@@ -72,17 +89,19 @@ const ShowAlertPage = createReactClass({
       return <Spinner />;
     }
 
-    const alert = this.state.alert;
+    const { alert } = this.state;
     const condition = this.state.alertCondition;
     const conditionExists = Object.keys(condition).length > 0;
-    const type = this.state.types[condition.type] || {};
-    const stream = this.state.stream;
+    const conditionType = this.state.availableConditions[condition.type] || {};
+    const { stream } = this.state;
 
     let statusLabel;
     let resolvedState;
+
     if (!alert.is_interval || alert.resolved_at) {
       statusLabel = <Label bsStyle="success">Resolved</Label>;
       const resolvedAtTime = alert.resolved_at || alert.triggered_at;
+
       if (resolvedAtTime) {
         resolvedState = (
           <span>
@@ -92,6 +111,7 @@ const ShowAlertPage = createReactClass({
       }
     } else {
       statusLabel = <Label bsStyle="danger">Unresolved</Label>;
+
       resolvedState = (
         <span>
           This alert was triggered at{' '}
@@ -131,10 +151,12 @@ const ShowAlertPage = createReactClass({
 
             <span>
               <ButtonToolbar>
-                <LinkContainer to={Routes.ALERTS.LIST}>
-                  <Button bsStyle="info" className="active">Alerts</Button>
+                <LinkContainer to={Routes.LEGACY_ALERTS.LIST}>
+                  <Button bsStyle="info">Alerts</Button>
                 </LinkContainer>
-                <OverlayElement overlay={conditionDetailsTooltip} placement="top" useOverlay={!condition.id}
+                <OverlayElement overlay={conditionDetailsTooltip}
+                                placement="top"
+                                useOverlay={!condition.id}
                                 trigger={['hover', 'focus']}>
                   <LinkContainer to={Routes.show_alert_condition(stream.id, condition.id)} disabled={!condition.id}>
                     <Button bsStyle="info">Condition details</Button>
@@ -144,11 +166,11 @@ const ShowAlertPage = createReactClass({
             </span>
           </PageHeader>
 
-          <AlertDetails alert={alert} condition={conditionExists && condition} conditionType={type} stream={stream} />
+          <AlertDetails alert={alert} condition={conditionExists && condition} conditionType={conditionType} stream={stream} />
         </div>
       </DocumentTitle>
     );
   },
 });
 
-export default ShowAlertPage;
+export default withParams(ShowAlertPage);

@@ -1,13 +1,28 @@
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
 import PropTypes from 'prop-types';
 import React from 'react';
-import { Row, Col } from 'react-bootstrap';
-import { Link } from 'react-router';
 
+import { Link } from 'components/graylog/router';
+import { Row, Col } from 'components/graylog';
 import { Input } from 'components/bootstrap';
 import { Select, Spinner } from 'components/common';
 import Routes from 'routing/Routes';
 import FormUtils from 'util/FormsUtils';
-
 import CombinedProvider from 'injection/CombinedProvider';
 
 const { LookupTablesActions } = CombinedProvider.get('LookupTables');
@@ -38,6 +53,7 @@ class LookupTableConverterConfiguration extends React.Component {
 
   _toggleConverter = (event) => {
     let converter;
+
     if (FormUtils.getValueFromInput(event.target) === true) {
       converter = this._getConverterObject();
     }
@@ -47,16 +63,17 @@ class LookupTableConverterConfiguration extends React.Component {
 
   _updateConfigValue = (key, value) => {
     const newConfig = this.props.configuration;
+
     newConfig[key] = value;
     this.props.onChange(this.props.type, this._getConverterObject(newConfig));
   };
 
   _onChange = (key) => {
-    return event => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
+    return (event) => this._updateConfigValue(key, FormUtils.getValueFromInput(event.target));
   };
 
   _onSelect = (key) => {
-    return value => this._updateConfigValue(key, value);
+    return (value) => this._updateConfigValue(key, value);
   };
 
   render() {
@@ -77,7 +94,7 @@ class LookupTableConverterConfiguration extends React.Component {
     return (
       <div className="xtrc-converter">
         <Input type="checkbox"
-               ref="converterEnabled"
+               ref={(converterEnabled) => { this.converterEnabled = converterEnabled; }}
                id={`enable-${this.props.type}-converter`}
                label="Convert value by using lookup table"
                wrapperClassName="col-md-offset-2 col-md-10"
@@ -91,12 +108,12 @@ class LookupTableConverterConfiguration extends React.Component {
                      label="Lookup Table"
                      labelClassName="col-md-3"
                      wrapperClassName="col-md-9"
-                     required={this.refs.converterEnabled && this.refs.converterEnabled.getChecked()}
+                     required={this.converterEnabled && this.converterEnabled.getChecked()}
                      help={helpMessage}>
                 <Select placeholder="Select a lookup table"
                         clearable={false}
                         options={lookupTables}
-                        matchProp="value"
+                        matchProp="label"
                         onChange={this._onSelect('lookup_table_name')}
                         value={this.props.configuration.lookup_table_name} />
               </Input>
